@@ -2,9 +2,17 @@
 #![allow(rustdoc::missing_crate_level_docs)] // it's an example
 
 use eframe::egui;
+<<<<<<< Updated upstream
 use egui_extras::{Column, TableBuilder};
+=======
+mod server_thread;
+use server_thread::ServerThread;
+>>>>>>> Stashed changes
 
 fn main() -> Result<(), eframe::Error> {
+    let server = ServerThread::new(8080);
+    server.start();
+
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
