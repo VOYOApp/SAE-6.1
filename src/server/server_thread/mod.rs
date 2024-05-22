@@ -1,8 +1,9 @@
 use std::net::{TcpListener};
 use std::thread;
 use std::time::Duration;
+use crate::server::client_handler;
 
-use crate::server::client_handler::client_handler;
+use crate::server::client_handler::{ClientHandler};
 
 pub(crate) struct ServerThread {
     pub(crate) port: u16,
@@ -23,9 +24,9 @@ impl ServerThread {
             match stream {
                 Ok(stream) => {
                     println!("New client connected: {}", stream.peer_addr().unwrap());
-                    stream.set_read_timeout(Some(Duration::from_millis(5000))).unwrap(); // Set timeout
+                    stream.set_read_timeout(Some(Duration::from_millis(100))).unwrap(); // Set timeout
                     thread::spawn(move || {
-                        client_handler(stream);
+                        ClientHandler::new(stream).run();
                     });
                 }
                 Err(e) => {
