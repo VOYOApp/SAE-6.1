@@ -2,12 +2,9 @@
 #![allow(rustdoc::missing_crate_level_docs)] // it's an example
 
 use eframe::egui;
-<<<<<<< Updated upstream
 use egui_extras::{Column, TableBuilder};
-=======
 mod server_thread;
 use server_thread::ServerThread;
->>>>>>> Stashed changes
 
 fn main() -> Result<(), eframe::Error> {
     let server = ServerThread::new(8080);
