@@ -1,5 +1,6 @@
 mod server;
 mod ui;
+mod app_defines;
 
 use eframe::egui;
 use crate::server::server_thread::ServerThread;

@@ -1,0 +1,7 @@
+struct ServerUi {
+    // ...
+}
+
+impl ServerUi {
+
+}
