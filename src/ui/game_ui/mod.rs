@@ -8,21 +8,16 @@ use eframe::egui;
 use egui_extras::{Column, TableBuilder};
 
 
-pub(crate) struct MyApp {
-    name: String,
-    age: u32,
+pub(crate) struct GameUI {
 }
 
-impl Default for MyApp {
+impl Default for GameUI {
     fn default() -> Self {
-        Self {
-            name: "Arthur".to_owned(),
-            age: 42,
-        }
+        Self {}
     }
 }
 
-impl eframe::App for MyApp {
+impl eframe::App for GameUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             TableBuilder::new(ui)

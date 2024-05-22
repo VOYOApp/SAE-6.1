@@ -3,7 +3,7 @@ mod ui;
 
 use eframe::egui;
 use crate::server::server_thread::ServerThread;
-use crate::ui::game_ui::MyApp;
+use crate::ui::game_ui::GameUI;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
@@ -15,9 +15,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Universal Rust Server Software",
         options,
         Box::new(|_| {
-            Box::<MyApp>::default()
+            Box::<GameUI>::default()
         }),
-    );
+    ).expect("TODO: panic message");
 
     let serv = ServerThread::new(6969);
     serv.start();
