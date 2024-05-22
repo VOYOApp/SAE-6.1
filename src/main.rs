@@ -6,25 +6,26 @@ use egui_extras::{Column, TableBuilder};
 mod server_thread;
 use server_thread::ServerThread;
 
-fn main() -> Result<(), eframe::Error> {
-    let server = ServerThread::new(8080);
-    server.start();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let serv = ServerThread::new(6969);
+    serv.start();
+    Ok(())
 
-    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
-        ..Default::default()
-    };
-    eframe::run_native(
-        "Universal Rust Server Software",
-        options,
-        Box::new(|cc| {
-            // This gives us image support:
-            egui_extras::install_image_loaders(&cc.egui_ctx);
-
-            Box::<MyApp>::default()
-        }),
-    )
+    // env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
+    // let options = eframe::NativeOptions {
+    //     viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
+    //     ..Default::default()
+    // };
+    // eframe::run_native(
+    //     "Universal Rust Server Software",
+    //     options,
+    //     Box::new(|cc| {
+    //         // This gives us image support:
+    //         egui_extras::install_image_loaders(&cc.egui_ctx);
+    //
+    //         Box::<MyApp>::default()
+    //     }),
+    // )
 }
 
 struct MyApp {
