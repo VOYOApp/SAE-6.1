@@ -12,7 +12,7 @@ impl AppDefines {
     pub const GAME_MODES: [&'static str; 1] = ["FreeForAll"];
     pub const BOT_RATE_OF_FIRE: i32 = 100; //ticks
     pub const PENALTY_TIME: i64 = 1000; //ticks
-    pub const CONNECTION_TIMEOUT_DELAY: i32 = 10 * 1000; // 10 seconds
+    pub const CONNECTION_TIMEOUT_DELAY: i32 = 10; // 10 seconds
     pub const MESSAGE_DURATION: i32 = 1000; //ticks
     pub const MESSAGE_LENGTH: i32 = 40; //characters
     pub const SCORE_LIMIT: i32 = -1; //points

@@ -12,7 +12,7 @@ pub(crate) struct ClientHandler {
     pub(crate) socket : TcpStream,
     pub(crate) buf_writer: BufWriter<TcpStream>,
     pub(crate) buf_reader: BufReader<TcpStream>,
-    pub(crate) previous_time: u128,
+    pub(crate) previous_time: u64,
 }
 
 impl ClientHandler {
@@ -23,30 +23,28 @@ impl ClientHandler {
             socket,
             buf_writer,
             buf_reader,
-            previous_time: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_micros(),
+            previous_time: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
         }
     }
 
     // println!("{:?} {:?} {:?}", now.duration_since(UNIX_EPOCH).unwrap().as_secs(), previous_time, AppDefines::CONNECTION_TIMEOUT_DELAY as u64);
 
     pub fn run(&mut self) {
-        let now = SystemTime::now();
         let mut received_message = String::new();
-        // let mut previous_time = now.duration_since(UNIX_EPOCH).unwrap().as_micros();
         let mut running = true;
 
         while running {
-            let current_time = now.duration_since(UNIX_EPOCH).unwrap().as_micros();
+            let now = SystemTime::now();
+            let current_time = now.duration_since(UNIX_EPOCH).unwrap().as_secs();
 
-            println!("{:?} {:?} {:?}", current_time, self.previous_time, AppDefines::CONNECTION_TIMEOUT_DELAY as u128);
-            println!("{:?}", current_time - self.previous_time);
+            // println!("{:?} {:?} {:?}", current_time, self.previous_time, AppDefines::CONNECTION_TIMEOUT_DELAY as u64);
+            // println!("{:?}", current_time - self.previous_time);
 
-            if current_time - self.previous_time > AppDefines::CONNECTION_TIMEOUT_DELAY as u128 {
+            if current_time - self.previous_time > AppDefines::CONNECTION_TIMEOUT_DELAY as u64 {
                 println!("Connection timeout {:?}", self.socket.peer_addr().unwrap());
                 self.socket.shutdown(std::net::Shutdown::Both).unwrap();
                 break;
             }
-            self.previous_time = current_time;
 
             if let Ok(message_length) = self.buf_reader.read_line(&mut received_message) {
                 if message_length > 1 {
@@ -62,6 +60,7 @@ impl ClientHandler {
                             }
                             _ => {
                                 println!("Default TODO PROCESS MESSAGE");
+                                self.previous_time = current_time;
                                 break;
                             }
                         }
@@ -76,8 +75,6 @@ impl ClientHandler {
             }
         }
     }
-
-
 
 
     // pub fn close_socket(&self) {
