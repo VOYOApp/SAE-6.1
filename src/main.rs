@@ -1,7 +1,24 @@
 mod server;
+mod ui;
+
+use eframe::egui;
 use crate::server::server_thread::ServerThread;
+use crate::ui::game_ui::MyApp;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_min_inner_size([1100.0, 700.0]),
+        ..Default::default()
+    };
+    eframe::run_native(
+        "Universal Rust Server Software",
+        options,
+        Box::new(|_| {
+            Box::<MyApp>::default()
+        }),
+    );
+
     let serv = ServerThread::new(6969);
     serv.start();
     Ok(())
