@@ -2,6 +2,7 @@
 #![allow(rustdoc::missing_crate_level_docs)] // it's an example
 
 use eframe::egui;
+use egui_extras::{Column, TableBuilder};
 
 fn main() -> Result<(), eframe::Error> {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
@@ -38,25 +39,40 @@ impl Default for MyApp {
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("My egui Application");
+            TableBuilder::new(ui)
+                .column(Column::exact(200.0).resizable(false))
+                .column(Column::exact(100.0))
+                .header(20.0, |mut header| {
+                    header.col(|ui| {
+                        ui.heading("Player Name");
+                    });
+                    header.col(|ui| {
+                        ui.heading("Score");
+                    });
+                })
+                .body(|mut body| {
+                    let players = vec!["Lopi5555", "Hethan_hdb", "Vavaaaaaah"];
+                    let scores = vec!["5", "19", "0"];
 
-
-            ui.horizontal(|ui| {
-                let name_label = ui.label("Your name: ");
-                ui.text_edit_singleline(&mut self.name)
-                    .labelled_by(name_label.id);
-            });
-            ui.add(egui::Slider::new(&mut self.age, 0..=120).text("age"));
-
-
-            if ui.button("Increment").clicked() {
-                self.age += 1;
-            }
-
-
-            ui.label(format!("Hello '{}', age {}", self.name, self.age));
-
-
+                    for (index, (player, score)) in players.iter().zip(scores.iter()).enumerate() {
+                        body.row(30.0, |mut row| {
+                            let bg_color = if index % 2 == 0 {
+                                egui::Color32::from_gray(20) // Light gray for even rows
+                            } else {
+                                egui::Color32::from_gray(24) // Almost white for odd rows
+                            };
+                            row.col(|ui| {
+                                ui.painter().rect_filled(ui.max_rect(), 0.0, bg_color);
+                                ui.label(*player);
+                            });
+                            row.col(|ui| {
+                                ui.painter().rect_filled(ui.max_rect(), 0.0, bg_color);
+                                ui.label(*score);
+                            });
+                        });
+                    }
+                });
         });
     }
 }
+
