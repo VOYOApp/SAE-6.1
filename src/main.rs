@@ -1,5 +1,13 @@
-use raylib::prelude::*;
 use std::ops::{Div, Sub};
+
+use rand::Rng;
+use raylib::prelude::*;
+
+const DOMINANT_COLOR: Color = Color::GREEN;
+const LINE_THICKNESS: i32 = 1;
+const WORLD_WIDTH: f32 = 1000.0;
+const WORLD_HEIGHT: f32 = 1000.0;
+const OBSTACLE_COUNT: i32 = 10;
 
 fn main() {
     // Initialization
@@ -22,9 +30,19 @@ fn main() {
     let mut ball_position = Vector2::new(500.0, 500.0); // Initial position within the rectangle
     let mut ball_speed = Vector2::new(5.0, 4.0);
     let ball_radius = 20;
-    let rect = Rectangle::new(0.0, 0.0, 1000.0, 1000.0);
+    let rect = Rectangle::new(0.0, 0.0, WORLD_WIDTH, WORLD_HEIGHT);
     let mut pause = false;
-    let mut frames_counter = 0;
+
+
+    // Generate random obstacles
+    let mut rng = rand::thread_rng();
+    let mut obstacles = Vec::new();
+    for _ in 0..OBSTACLE_COUNT {
+        let size = rng.gen_range(50.0..100.0);
+        let x = rng.gen_range(0.0..(rect.width - size));
+        let y = rng.gen_range(0.0..(rect.height - size));
+        obstacles.push(Rectangle::new(x, y, size, size));
+    }
 
     rl.set_target_fps(60);
 
@@ -38,7 +56,7 @@ fn main() {
         }
 
         if rl.is_key_pressed(KeyboardKey::KEY_SPACE) {
-            // pause = !pause;
+            pause = !pause;
         }
 
         if !pause {
@@ -53,8 +71,19 @@ fn main() {
             if (ball_position.y >= (rect.y + rect.height - ball_radius as f32)) || (ball_position.y <= (rect.y + ball_radius as f32)) {
                 ball_speed.y *= -1.0;
             }
-        } else {
-            frames_counter += 1;
+
+            // Check collision with obstacles
+            for obstacle in &obstacles {
+                if check_collision_circle_rec(ball_position, ball_radius as f32, *obstacle) {
+                    // Reflect ball direction
+                    if ball_position.x + ball_radius as f32 >= obstacle.x && ball_position.x - ball_radius as f32 <= obstacle.x + obstacle.width {
+                        ball_speed.y *= -1.0;
+                    }
+                    if ball_position.y + ball_radius as f32 >= obstacle.y && ball_position.y - ball_radius as f32 <= obstacle.y + obstacle.height {
+                        ball_speed.x *= -1.0;
+                    }
+                }
+            }
         }
 
         // Camera translation based on mouse right click
@@ -119,14 +148,24 @@ fn main() {
 
             // Draw the grid
             d2.gui_grid(
-                Rectangle::new(0.0, 0.0, 1000.0, 1000.0),
+                Rectangle::new(0.0, 0.0, WORLD_WIDTH, WORLD_HEIGHT),
                 50.0,
                 5.0 as i32,
             );
 
             // Draw a transparent rectangle with green borders
             d2.draw_rectangle_rec(rect, Color::new(0, 0, 0, 0)); // Transparent fill
-            d2.draw_rectangle_lines_ex(rect, 5, Color::GREEN); // Thickness of 5
+            d2.draw_rectangle_lines_ex(rect, LINE_THICKNESS, DOMINANT_COLOR); // Thickness of 5
+
+            // Draw the obstacles
+            for obstacle in &obstacles {
+                d2.draw_rectangle_rec(*obstacle, Color::new(0, 0, 0, 0));
+                let mut thickness = LINE_THICKNESS - 1;
+                if thickness < 1 {
+                    thickness = 1;
+                }
+                d2.draw_rectangle_lines_ex(*obstacle, thickness, DOMINANT_COLOR);
+            }
 
             // Draw the bouncing ball
             d2.draw_circle_v(ball_position, ball_radius as f32, Color::MAROON);
@@ -134,4 +173,14 @@ fn main() {
 
         d.draw_fps(10, 10);
     }
+}
+
+// Collision detection function
+fn check_collision_circle_rec(center: Vector2, radius: f32, rec: Rectangle) -> bool {
+    let rec_center = Vector2::new(rec.x + rec.width / 2.0, rec.y + rec.height / 2.0);
+    let dx = (center.x - rec_center.x).abs().min(rec.width / 2.0);
+    let dy = (center.y - rec_center.y).abs().min(rec.height / 2.0);
+    let closest = Vector2::new(rec_center.x + dx * (if center.x < rec_center.x { -1.0 } else { 1.0 }),
+                               rec_center.y + dy * (if center.y < rec_center.y { -1.0 } else { 1.0 }));
+    center.distance_to(closest) < radius
 }
