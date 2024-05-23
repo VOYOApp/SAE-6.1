@@ -4,10 +4,10 @@ use rand::Rng;
 use raylib::prelude::*;
 
 const DOMINANT_COLOR: Color = Color::GREEN;
-const LINE_THICKNESS: i32 = 1;
-const WORLD_WIDTH: f32 = 1000.0;
+const LINE_THICKNESS: i32 = 5;
+const WORLD_WIDTH: f32 = 1300.0;
 const WORLD_HEIGHT: f32 = 1000.0;
-const OBSTACLE_COUNT: i32 = 10;
+const OBSTACLE_COUNT: i32 = 20;
 
 fn main() {
     // Initialization
