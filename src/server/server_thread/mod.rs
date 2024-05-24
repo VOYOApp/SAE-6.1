@@ -1,11 +1,10 @@
-use std::net::{TcpListener};
+use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use eframe::egui;
 
-use crate::server::client_handler::{ClientHandler};
-use crate::StyledMessage;
+use crate::server::client_handler::ClientHandler;
+use crate::types::{add_message, MessageType, StyledMessage};
 
 pub(crate) struct ServerThread {
     pub(crate) port: u16,
@@ -20,42 +19,37 @@ impl ServerThread {
     pub(crate) fn start(&self) {
         let listener = TcpListener::bind(("127.0.0.1", self.port)).expect("Could not bind to port");
 
-        let message = StyledMessage {
-            text: format!("[START] Server address: {:?}", listener.local_addr().unwrap()),
-            color: egui::Color32::from_rgb(0, 255, 0),
-        };
-        self.messages.lock().unwrap().push(message);
-        let message2 = StyledMessage {
-            text: format!("[START] Listening on port: {}", self.port),
-            color: egui::Color32::from_rgb(0, 255, 0),
-        };
-        self.messages.lock().unwrap().push(message2);
-        println!("Server address: {:?}", listener.local_addr().unwrap());
-        println!("Listening on port: {} \n", self.port);
+        add_message(
+            &self.messages,
+            format!("\n[START] Server address: {:?}", listener.local_addr().unwrap()),
+            MessageType::Default,
+        );
+        add_message(
+            &self.messages,
+            format!("[START] Listening on port: {}", self.port),
+            MessageType::Default,
+        );
 
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
+                    add_message(
+                        &self.messages,
+                        format!("[INFO] New client connected: {}", stream.peer_addr().unwrap()),
+                        MessageType::Info,
+                    );
                     let messages = Arc::clone(&self.messages);
-                    let message = StyledMessage {
-                        text: format!("[INFO] New client connected: {}", stream.peer_addr().unwrap()),
-                        color: egui::Color32::from_rgb(0, 255, 0), // Green color for start messages
-                    };
-                    messages.lock().unwrap().push(message);
-                    println!("New client connected: {}", stream.peer_addr().unwrap());
                     stream.set_read_timeout(Some(Duration::from_millis(100))).unwrap(); // Set timeout
                     thread::spawn(move || {
                         ClientHandler::new(stream, messages).run();
                     });
                 }
                 Err(e) => {
-                    let messages = Arc::clone(&self.messages);
-                    let message = StyledMessage {
-                        text: format!("[ERROR] Connection failed: {}", e),
-                        color: egui::Color32::from_rgb(255, 0, 0), // Red color for error messages
-                    };
-                    messages.lock().unwrap().push(message);
-                    println!("Connection failed: {}", e);
+                    add_message(
+                        &self.messages,
+                        format!("[ERROR] Connection failed: {}", e),
+                        MessageType::Error,
+                    );
                 }
             }
         }

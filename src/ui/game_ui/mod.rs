@@ -7,7 +7,6 @@
 use eframe::egui;
 use egui_extras::{Column, TableBuilder};
 
-
 pub(crate) struct GameUI {
 }
 

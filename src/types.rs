@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use eframe::egui;
 
 pub struct StyledMessage {
@@ -18,21 +19,24 @@ pub enum MessageType {
     Info,
     Error,
     Warning,
-    ClientExit,
-    ClientDisconnect,
+    Debug,
     Default,
 }
 
 impl MessageType {
     pub fn to_color(&self) -> egui::Color32 {
         match self {
-            MessageType::Info => egui::Color32::from_rgb(0, 255, 0),         // Green
-            MessageType::Error => egui::Color32::from_rgb(255, 0, 0),       // Red
-            MessageType::Warning => egui::Color32::from_rgb(255, 255, 0),   // Yellow
-            MessageType::ClientExit => egui::Color32::from_rgb(0, 0, 255),  // Blue
-            MessageType::ClientDisconnect => egui::Color32::from_rgb(255, 165, 0), // Orange
-            MessageType::Default => egui::Color32::from_rgb(0, 0, 0),       // Black
+            MessageType::Info => egui::Color32::GREEN,         // Green
+            MessageType::Error => egui::Color32::RED,       // Red
+            MessageType::Warning => egui::Color32::YELLOW,   // Yellow
+            MessageType::Debug => egui::Color32::BLUE,     // Blue
+            MessageType::Default => egui::Color32::GRAY,       // Black
         }
     }
+}
+
+pub fn add_message(messages: &Arc<Mutex<Vec<StyledMessage>>>, text: String, message_type: MessageType) {
+    let message = StyledMessage::new(text, message_type);
+    messages.lock().unwrap().push(message);
 }
 

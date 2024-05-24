@@ -1,5 +1,7 @@
 use std::sync::{Arc, Mutex};
+
 use eframe::egui::RichText;
+
 use crate::StyledMessage;
 
 pub struct ServerUi {

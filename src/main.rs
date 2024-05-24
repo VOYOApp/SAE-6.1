@@ -1,13 +1,14 @@
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+pub use types::StyledMessage;
+
+use crate::server::server_thread::ServerThread;
+
 mod server;
 mod ui;
 mod app_defines;
 pub mod types;
-
-use std::sync::{Arc, Mutex};
-use std::thread;
-use crate::server::server_thread::ServerThread;
-pub use types::StyledMessage;
-
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Shared state for messages
