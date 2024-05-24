@@ -11,24 +11,80 @@ const OBSTACLE_COUNT: i32 = 20;
 const TARGET_FPS: u32 = 60;
 
 fn main() {
-// Create the Rapier2D structures
+    // Create the Rapier2D structures
     let mut rigid_body_set = RigidBodySet::new();
     let mut collider_set = ColliderSet::new();
 
-    // Create the ground
-    let ground_collider = ColliderBuilder::cuboid(100.0, 0.1).build();
-    collider_set.insert(ground_collider);
+    // Create the world frame
+    let world_collider_left = ColliderBuilder::cuboid(0.01, 50.0).build();
+    let world_collider_right = ColliderBuilder::cuboid(0.01, 50.0).build();
+    let world_collider_bottom = ColliderBuilder::cuboid(50.0, 0.01).build();
+    let world_collider_top = ColliderBuilder::cuboid(50.0, 0.01).build();
+    let world_collider_left_handle = collider_set.insert(world_collider_left.clone());
+    let world_collider_right_handle = collider_set.insert(world_collider_right.clone());
+    let world_collider_bottom_handle = collider_set.insert(world_collider_bottom.clone());
+    let world_collider_top_handle = collider_set.insert(world_collider_top.clone());
+    let world_body = RigidBodyBuilder::kinematic_position_based()
+        .translation(vector![-25.0, 0.0])
+        .build();
+    let world_body_handle = rigid_body_set.insert(world_body);
+    collider_set.insert_with_parent(
+        world_collider_left.clone(),
+        world_body_handle,
+        &mut rigid_body_set,
+    );
+    let world_body = RigidBodyBuilder::kinematic_position_based()
+        .translation(vector![25.0, 0.0])
+        .build();
+    let world_body_handle = rigid_body_set.insert(world_body);
+    collider_set.insert_with_parent(
+        world_collider_right.clone(),
+        world_body_handle,
+        &mut rigid_body_set,
+    );
+    let world_body = RigidBodyBuilder::kinematic_position_based()
+        .translation(vector![0.0, -25.0])
+        .build();
+    let world_body_handle = rigid_body_set.insert(world_body);
+    collider_set.insert_with_parent(
+        world_collider_bottom.clone(),
+        world_body_handle,
+        &mut rigid_body_set,
+    );
+    let world_body = RigidBodyBuilder::kinematic_position_based()
+        .translation(vector![0.0, 25.0])
+        .build();
+    let world_body_handle = rigid_body_set.insert(world_body);
+    collider_set.insert_with_parent(
+        world_collider_top.clone(),
+        world_body_handle,
+        &mut rigid_body_set,
+    );
+
+    // Create the obstacles
+    for i in 0..OBSTACLE_COUNT {
+        let obstacle_collider = ColliderBuilder::cuboid(1.0, 1.0).build();
+        let obstacle_body = RigidBodyBuilder::kinematic_position_based()
+            .translation(vector![i as f32 * 2.0 - 10.0, 10.0])
+            .build();
+        let obstacle_body_handle = rigid_body_set.insert(obstacle_body);
+        collider_set.insert_with_parent(
+            obstacle_collider,
+            obstacle_body_handle,
+            &mut rigid_body_set,
+        );
+    }
 
     // Create the bouncing ball
     let ball_body = RigidBodyBuilder::dynamic()
-        .translation(vector![0.0, 10.0])
+        .translation(vector![0.0, 0.0])
         .build();
-    let ball_collider = ColliderBuilder::ball(0.5).restitution(0.7).build();
+    let ball_collider = ColliderBuilder::ball(0.5).restitution(2.5).build();
     let ball_body_handle = rigid_body_set.insert(ball_body);
     collider_set.insert_with_parent(ball_collider, ball_body_handle, &mut rigid_body_set);
 
     // Physics structures
-    let gravity = vector![0.0, -9.81];
+    let gravity = vector![0.10, -0.0];
     let integration_parameters = IntegrationParameters::default();
     let mut physics_pipeline = PhysicsPipeline::new();
     let mut island_manager = IslandManager::new();
@@ -53,18 +109,14 @@ fn main() {
         rotation: 0.0,
         zoom: 1.0,
     };
-    let rect = Rectangle::new(0.0, 0.0, WORLD_WIDTH, WORLD_HEIGHT);
-
 
     rl.set_target_fps(TARGET_FPS);
-
-    // TODO: Generate random obstacles to be added into the scene here
 
 
     // Main game loop
     while !rl.window_should_close() {
         // Camera translation based on mouse right click
-        if rl.is_mouse_button_down(MouseButton::MOUSE_RIGHT_BUTTON) {
+        if rl.is_mouse_button_down(MouseButton::MOUSE_LEFT_BUTTON) {
             let delta = rl.get_mouse_position().sub(camera.offset);
             camera.target = camera.target.sub(delta.div(camera.zoom));
             camera.offset = rl.get_mouse_position();
@@ -118,26 +170,16 @@ fn main() {
         let ball_position = ball_body.translation();
 
 
-
-        // Display ball altitude in console
-        println!("Ball altitude: {}", ball_position.y);
-
         {
             let mut d2 = d.begin_mode2D(camera);
 
-            // Draw the grid
-            d2.gui_grid(
-                Rectangle::new(0.0, 0.0, WORLD_WIDTH, WORLD_HEIGHT),
-                50.0,
-                5.0 as i32,
-            );
+            let mut rect = Rectangle::new(-850.0, 300.0, 1250.0, 1250.0);
+            // Draw the world frame in green
+            d2.gui_grid(rect, 20.0, 3);
 
-            // Draw a transparent rectangle with green borders
             d2.draw_rectangle_rec(rect, Color::new(0, 0, 0, 0));
             d2.draw_rectangle_lines_ex(rect, LINE_THICKNESS, DOMINANT_COLOR);
 
-            // Draw ground
-            d2.draw_rectangle(0, 300, 800, 10, Color::DARKGRAY);
 
             // Draw ball
             d2.draw_circle(
@@ -146,7 +188,6 @@ fn main() {
                 25.0,
                 Color::MAROON,
             );
-
         }
 
         d.draw_fps(10, 10);
