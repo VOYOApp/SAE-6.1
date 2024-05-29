@@ -98,7 +98,7 @@ impl ClientHandler {
 
     pub fn add_to_reponse(mut reponse: String, message: String) {
         if (reponse != "") {
-            reponse += "#";
+            reponse += AppDefines::COMMAND_SEP;
             return reponse += &*message;
         }
     }
