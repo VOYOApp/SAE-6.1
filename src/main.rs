@@ -74,7 +74,7 @@ fn main() {
             .translation(vector![x, y])
             .linvel(vector![vx, vy])
             .build();
-        let collider = ColliderBuilder::ball(10.0).restitution(2.0).build();  // Add restitution to ensure bouncing
+        let collider = ColliderBuilder::ball(10.0).restitution(1.0).build();  // Add restitution to ensure bouncing
 
         let body_handle = bodies.insert(rigid_body);
         colliders.insert_with_parent(collider, body_handle, &mut bodies);
