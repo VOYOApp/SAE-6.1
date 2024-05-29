@@ -1,16 +1,54 @@
+use std::ops::{Div, Sub};
+
+use rand::Rng;
 use rapier2d::prelude::*;
 use raylib::prelude::*;
-use rand::Rng;
+
+const TARGET_FPS: u32 = 60;
+
 
 struct Sprite {
     body_handle: RigidBodyHandle,
     color: Color,
 }
 
+
+fn configure_camera() -> Camera2D {
+    Camera2D {
+        target: Vector2::zero(),
+        offset: Vector2::zero(),
+        rotation: 0.0,
+        zoom: 1.0,
+    }
+}
+
+fn handle_camera_input(rl: &RaylibHandle, camera: &mut Camera2D) {
+    if rl.is_mouse_button_down(MouseButton::MOUSE_LEFT_BUTTON) {
+        let delta = rl.get_mouse_position().sub(camera.offset);
+        camera.target = camera.target.sub(delta.div(camera.zoom));
+        camera.offset = rl.get_mouse_position();
+    }
+
+    let wheel = rl.get_mouse_wheel_move();
+    if wheel != 0.0 {
+        let mouse_world_pos = rl.get_screen_to_world2D(rl.get_mouse_position(), *camera);
+        camera.offset = rl.get_mouse_position();
+        camera.target = mouse_world_pos;
+
+        let mut scale_factor = 1.0 + (0.25 * wheel.abs());
+        if wheel < 0.0 {
+            scale_factor = 1.0 / scale_factor;
+        }
+        camera.zoom *= scale_factor;
+        camera.zoom = camera.zoom.clamp(0.125, 64.0);
+    }
+}
+
 fn main() {
     // Initialize raylib
     let (mut rl, thread) = raylib::init()
         .size(1200, 1000)
+        .resizable()
         .title("Rapier2D with Raylib")
         .build();
 
@@ -74,7 +112,7 @@ fn main() {
             .translation(vector![x, y])
             .linvel(vector![vx, vy])
             .build();
-        let collider = ColliderBuilder::ball(10.0).restitution(1.0).build();  // Add restitution to ensure bouncing
+        let collider = ColliderBuilder::ball(10.0).restitution(1.5).build();  // Add restitution to ensure bouncing
 
         let body_handle = bodies.insert(rigid_body);
         colliders.insert_with_parent(collider, body_handle, &mut bodies);
@@ -90,8 +128,14 @@ fn main() {
         });
     }
 
+    let mut camera = configure_camera();
+    rl.set_target_fps(TARGET_FPS);
+
+
     // Main game loop
     while !rl.window_should_close() {
+        handle_camera_input(&rl, &mut camera);
+
         // Step the physics simulation
         physics_pipeline.step(
             &gravity,
@@ -110,20 +154,27 @@ fn main() {
         );
 
         let mut d = rl.begin_drawing(&thread);
-
         d.clear_background(Color::BLACK);
 
-        // Draw boundaries
-        d.draw_rectangle(0, 0, 1200, 10, Color::GREEN); // Top
-        d.draw_rectangle(0, 990, 1200, 10, Color::GREEN); // Bottom
-        d.draw_rectangle(0, 0, 10, 1000, Color::GREEN); // Left
-        d.draw_rectangle(1190, 0, 10, 1000, Color::GREEN); // Right
+        {
+            let mut d2 = d.begin_mode2D(camera);
 
-        // Draw and update sprites
-        for sprite in &sprites {
-            if let Some(body) = bodies.get(sprite.body_handle) {
-                let pos = body.position().translation.vector;
-                d.draw_circle(pos.x as i32, pos.y as i32, 10.0, sprite.color);
+            // Draw boundaries
+            d2.draw_rectangle(0, 0, 1200, 10, Color::GREEN); // Top
+            d2.draw_rectangle(0, 990, 1200, 10, Color::GREEN); // Bottom
+            d2.draw_rectangle(0, 0, 10, 1000, Color::GREEN); // Left
+            d2.draw_rectangle(1190, 0, 10, 1000, Color::GREEN); // Right
+
+            let rect = Rectangle::new(10.0, 10.0, 1180.0, 980.0);
+            d2.gui_grid(rect, 50.0, 3);
+
+
+            // Draw and update sprites
+            for sprite in &sprites {
+                if let Some(body) = bodies.get(sprite.body_handle) {
+                    let pos = body.position().translation.vector;
+                    d2.draw_circle(pos.x as i32, pos.y as i32, 10.0, sprite.color);
+                }
             }
         }
     }
