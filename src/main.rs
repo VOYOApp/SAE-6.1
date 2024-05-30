@@ -4,6 +4,7 @@ use std::thread;
 pub use types::StyledMessage;
 
 use crate::server::server_thread::ServerThread;
+use crate::ui::game_ui::GameUI;
 
 mod server;
 mod ui;
@@ -22,6 +23,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let serv = ServerThread::new(6969, server_messages);
         serv.start();
     });
+
+    let options = eframe::NativeOptions::default();
+    eframe::run_native(
+        "Physics Simulation",
+        options,
+        Box::new(|_cc| Box::new(GameUI::default())),
+    ).expect("TODO: panic message");
 
     // Run the GUI in the main thread
     let native_options = eframe::NativeOptions::default();
