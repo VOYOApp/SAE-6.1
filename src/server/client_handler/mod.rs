@@ -82,7 +82,7 @@ impl ClientHandler {
         }
     }
 
-    fn process_message(&mut self, message: &str) {
+    fn process_message(&mut self, received: &str) {
         println!("Default TODO PROCESS MESSAGE");
     }
 
@@ -97,7 +97,7 @@ impl ClientHandler {
     }
 
     pub fn add_to_reponse(mut reponse: String, message: String) {
-        if reponse != ""{
+        if reponse != "" {
             reponse += AppDefines::COMMAND_SEP;
             return reponse += &*message;
         }
