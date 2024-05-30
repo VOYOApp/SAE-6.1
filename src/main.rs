@@ -1,5 +1,3 @@
-use std::ops::{Div, Sub};
-
 use rand::Rng;
 use rapier2d::prelude::*;
 use raylib::prelude::*;
@@ -10,6 +8,84 @@ const TARGET_FPS: u32 = 60;
 struct Sprite {
     body_handle: RigidBodyHandle,
     color: Color,
+}
+
+#[derive(Clone)]
+struct Player {
+    name: String,
+    score: u32,
+}
+
+
+impl Player {
+    fn new(name: String, score: u32) -> Self {
+        Self { name, score }
+    }
+}
+
+struct Dashboard {
+    width: i32,
+    height: i32,
+    background_color: Color,
+    text_color: Color,
+    text: String,
+    players: Vec<Player>,
+}
+
+impl Dashboard {
+    fn new(width: i32, height: i32, background_color: Color, text_color: Color, text: String, players: Vec<Player>) -> Self {
+        Self {
+            width,
+            height,
+            background_color,
+            text_color,
+            text,
+            players,
+        }
+    }
+
+    fn draw(&self, d: &mut RaylibDrawHandle, screen_width: i32, screen_height: i32) {
+        d.draw_rectangle(
+            screen_width - self.width,
+            0,
+            self.width,
+            screen_height,
+            self.background_color,
+        );
+        d.draw_text(
+            &self.text,
+            screen_width - self.width + 20,
+            20,
+            20,
+            self.text_color,
+        );
+
+        let mut y_offset = 60;
+        for player in &self.players {
+            let player_info = format!("{}: {}", player.name, player.score);
+            d.draw_text(
+                &player_info,
+                screen_width - self.width + 20,
+                y_offset,
+                20,
+                self.text_color,
+            );
+            y_offset += 30;
+        }
+    }
+}
+
+fn generate_random_players(count: usize) -> Vec<Player> {
+    let mut rng = rand::thread_rng();
+    let mut players = Vec::new();
+    for i in 1..=count {
+        let player = Player {
+            name: format!("Player {}", i),
+            score: rng.gen_range(0..100),
+        };
+        players.push(player);
+    }
+    players
 }
 
 
@@ -23,7 +99,6 @@ fn configure_camera() -> Camera2D {
 }
 
 fn handle_camera_input(rl: &RaylibHandle, camera: &mut Camera2D) {
-
     let wheel = rl.get_mouse_wheel_move();
     if wheel != 0.0 {
         let mouse_world_pos = rl.get_screen_to_world2D(rl.get_mouse_position(), *camera);
@@ -49,7 +124,7 @@ fn main() {
 
     // Create the physics world
     let mut physics_pipeline = PhysicsPipeline::new();
-    let gravity = vector![0.0, 0.0];  // No gravity
+    let gravity = vector![0.0, 0.0];
     let integration_parameters = IntegrationParameters::default();
     let mut islands = IslandManager::new();
     let mut broad_phase = DefaultBroadPhase::new();
@@ -66,7 +141,7 @@ fn main() {
     // Define the world dimensions
     let world_width = 1200.0;
     let world_height = 1000.0;
-    let thickness = 10.0;  // Thickness of the boundary walls
+    let thickness = 8.0;  // Thickness of the boundary walls
 
     let mut previous_mouse_position = rl.get_mouse_position();
 
@@ -127,11 +202,16 @@ fn main() {
 
     let mut camera = configure_camera();
     rl.set_target_fps(TARGET_FPS);
+    let mut players = generate_random_players(10);
 
 
     // Main game loop
     while !rl.window_should_close() {
         handle_camera_input(&rl, &mut camera);
+
+        let mut screen_width = rl.get_screen_width();
+        let mut screen_height = rl.get_screen_height();
+        let dashboard = Dashboard::new(400, screen_height, Color::new(0, 0, 0, 220), Color::WHITE, "DashBoard".to_string(), players.clone());
 
         let current_mouse_position = rl.get_mouse_position();
 
@@ -186,6 +266,9 @@ fn main() {
                 }
             }
         }
-        d.draw_fps(10,10)
+        d.draw_fps(10, 10);
+
+        // Dans la boucle, à la fin pour print au dessus du reste
+        dashboard.draw(&mut d, screen_width, screen_height);
     }
 }
