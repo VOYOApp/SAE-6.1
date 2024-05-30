@@ -6,8 +6,6 @@
 )] // hide console window on Windows in release
 #![allow(rustdoc::missing_crate_level_docs)]
 
-use std::io::Lines;
-use std::str::Lines;
 use std::time::{Duration, Instant};
 
 // it's an example
@@ -40,20 +38,20 @@ pub(crate) struct GameUI {
 }
 
 
-fn draw_polygon(
-    ui: &mut egui::Ui,
-    lines: &mut Lines,
-    color: &mut Color32,
-    width: &mut f32
-) {
-    for line in lines.iter_mut() {
-        ui.painter().add(egui::Shape::line(
-            line.clone(),
-            (*width).into(),
-            *color,
-        ));
-    }
-}
+// fn draw_polygon(
+//     ui: &mut egui::Ui,
+//     lines: &mut Lines,
+//     color: &mut Color32,
+//     width: &mut f32
+// ) {
+//     for line in lines.iter_mut() {
+//         ui.painter().add(egui::Shape::line(
+//             line.clone(),
+//             (*width).into(),
+//             *color,
+//         ));
+//     }
+// }
 
 
 impl Default for GameUI {
@@ -167,7 +165,7 @@ impl eframe::App for GameUI {
                     .show(ui, |plot_ui| {
                         plot_ui.points(plot_points);
 
-                        
+
                         let line = Line::new(PlotPoints::new(vec![[0.0, 0.0], [1200.0, 0.0]]))
                             .color(egui::Color32::GREEN)
                             .name("Ground")
