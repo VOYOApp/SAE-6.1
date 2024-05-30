@@ -10,14 +10,11 @@ use std::time::{Duration, Instant};
 
 // it's an example
 use eframe::egui;
-use egui::Color32;
 use egui_extras::*;
 use egui_plot::*;
 use egui_plot::Line;
 use rand::Rng;
 use rapier2d::prelude::*;
-use crate::app_defines::AppDefines;
-
 
 pub(crate) struct GameUI {
     physics_pipeline: PhysicsPipeline,
@@ -36,23 +33,6 @@ pub(crate) struct GameUI {
     start_time: Instant,
     loop_duration: Duration,
 }
-
-
-// fn draw_polygon(
-//     ui: &mut egui::Ui,
-//     lines: &mut Lines,
-//     color: &mut Color32,
-//     width: &mut f32
-// ) {
-//     for line in lines.iter_mut() {
-//         ui.painter().add(egui::Shape::line(
-//             line.clone(),
-//             (*width).into(),
-//             *color,
-//         ));
-//     }
-// }
-
 
 impl Default for GameUI {
     fn default() -> Self {
@@ -91,7 +71,7 @@ impl Default for GameUI {
 
         // Create balls with random initial positions and velocities
         let mut balls = Vec::new();
-        for _ in 0..10 {
+        for _ in 0..2000 {
             let x = rng.gen_range(50.0..1150.0);
             let y = rng.gen_range(50.0..950.0);
             let vx = rng.gen_range(-50.0..50.0);
@@ -102,10 +82,16 @@ impl Default for GameUI {
                     .linvel(vector![vx, vy])
                     .build(),
             );
-            let ball_collider = ColliderBuilder::ball(10.0).restitution(2.0).build();
+            let ball_collider = ColliderBuilder::ball(10.0).restitution(1.0).build();
             colliders.insert_with_parent(ball_collider, ball_handle, &mut bodies);
             balls.push(ball_handle);
         }
+
+        // Create diamond-shaped obstacles
+        let diamond_handle = bodies.insert(RigidBodyBuilder::fixed().translation(vector![600.0, 500.0]).build());
+        let diamond_collider = ColliderBuilder::cuboid(50.0, 50.0).rotation(0.785398).build();
+        colliders.insert_with_parent(diamond_collider, diamond_handle, &mut bodies);
+
 
         Self {
             physics_pipeline,
@@ -162,37 +148,30 @@ impl eframe::App for GameUI {
                 Plot::new("dynamic_plot")
                     .view_aspect(1.2) // Adjust aspect ratio to fit the world dimensions
                     .show_axes([false, false]) // Hide axes
+                    .show_grid([false, false])
                     .show(ui, |plot_ui| {
                         plot_ui.points(plot_points);
 
 
-                        let line = Line::new(PlotPoints::new(vec![[0.0, 0.0], [1200.0, 0.0]]))
+                        // DIamond shaped obstacles
+                        let worldb = Line::new(PlotPoints::new(vec![[0.0, 0.0], [1200.0, 0.0], [1200.0, 1000.0], [0.0, 1000.0], [0.0, 0.0]]))
                             .color(egui::Color32::GREEN)
-                            .name("Ground")
+                            .name("Diamond")
                             .width(4.0)
                             .style(LineStyle::Solid);
-                        plot_ui.line(line);
+                        plot_ui.line(worldb);
 
-                        let line = Line::new(PlotPoints::new(vec![[0.0, 1000.0], [1200.0, 1000.0]]))
-                            .color(egui::Color32::GREEN)
-                            .name("Ground")
-                            .width(4.0)
-                            .style(LineStyle::Solid);
-                        plot_ui.line(line);
 
-                        let line = Line::new(PlotPoints::new(vec![[0.0, 0.0], [0.0, 1000.0]]))
-                            .color(egui::Color32::GREEN)
-                            .name("Ground")
-                            .width(4.0)
-                            .style(LineStyle::Solid);
-                        plot_ui.line(line);
 
-                        let line = Line::new(PlotPoints::new(vec![[1200.0, 1000.0], [1200.0, 0.0]]))
-                            .color(egui::Color32::GREEN)
-                            .name("Ground")
+                        // DIamond shaped obstacles
+                        let diamond_line = Line::new(PlotPoints::new(vec![[600.0, 500.0], [650.0, 550.0], [600.0, 600.0], [550.0, 550.0], [600.0, 500.0]]))
+                            .color(egui::Color32::LIGHT_BLUE)
+                            .name("Diamond")
                             .width(4.0)
                             .style(LineStyle::Solid);
-                        plot_ui.line(line);
+                        plot_ui.line(diamond_line);
+
+
                     });
             });
 
@@ -244,4 +223,3 @@ impl eframe::App for GameUI {
         ctx.request_repaint();
     }
 }
-
