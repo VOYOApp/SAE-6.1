@@ -23,11 +23,6 @@ fn configure_camera() -> Camera2D {
 }
 
 fn handle_camera_input(rl: &RaylibHandle, camera: &mut Camera2D) {
-    if rl.is_mouse_button_down(MouseButton::MOUSE_LEFT_BUTTON) {
-        let delta = rl.get_mouse_position().sub(camera.offset);
-        camera.target = camera.target.sub(delta.div(camera.zoom));
-        camera.offset = rl.get_mouse_position();
-    }
 
     let wheel = rl.get_mouse_wheel_move();
     if wheel != 0.0 {
@@ -72,6 +67,8 @@ fn main() {
     let world_width = 1200.0;
     let world_height = 1000.0;
     let thickness = 10.0;  // Thickness of the boundary walls
+
+    let mut previous_mouse_position = rl.get_mouse_position();
 
     // Define the boundaries as static colliders
     let boundaries = [
@@ -136,6 +133,18 @@ fn main() {
     while !rl.window_should_close() {
         handle_camera_input(&rl, &mut camera);
 
+        let current_mouse_position = rl.get_mouse_position();
+
+        if rl.is_mouse_button_down(MouseButton::MOUSE_LEFT_BUTTON) {
+            let delta = Vector2::new(
+                current_mouse_position.x - previous_mouse_position.x,
+                current_mouse_position.y - previous_mouse_position.y,
+            );
+            let delta = Vector2::new(-delta.x / camera.zoom, -delta.y / camera.zoom);
+            camera.target = Vector2::new(camera.target.x + delta.x, camera.target.y + delta.y);
+        }
+        previous_mouse_position = current_mouse_position;
+
         // Step the physics simulation
         physics_pipeline.step(
             &gravity,
@@ -177,5 +186,6 @@ fn main() {
                 }
             }
         }
+        d.draw_fps(10,10)
     }
 }
