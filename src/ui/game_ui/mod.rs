@@ -8,8 +8,8 @@
 
 use std::time::{Duration, Instant};
 
-// it's an example
 use eframe::egui;
+use egui::Vec2b;
 use egui_extras::*;
 use egui_plot::*;
 use egui_plot::Line;
@@ -52,7 +52,6 @@ impl Default for GameUI {
         let query_pipeline = QueryPipeline::new();
 
         // Create world boundaries
-        let world_size = vector![1200.0, 1000.0];
         let ground_handle = bodies.insert(RigidBodyBuilder::fixed().translation(vector![600.0, 0.0]).build());
         let ground_collider = ColliderBuilder::cuboid(600.0, 10.0).build();
         colliders.insert_with_parent(ground_collider, ground_handle, &mut bodies);
@@ -137,8 +136,14 @@ impl eframe::App for GameUI {
             [ball.translation().x as f64, ball.translation().y as f64]
         }).collect();
 
+        // Get window width
+        let mut window_width = ctx.screen_rect().width();
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            egui::SidePanel::left("left_panel").min_width(500.0).show_inside(ui, |ui| {
+            egui::SidePanel::left("left_panel")
+                .max_width(window_width - 350.0)
+                .min_width(window_width - 350.0)
+                .show_inside(ui, |ui| {
 
                 // Plot view with dynamic points
                 let plot_points = Points::new(points)
@@ -146,32 +151,29 @@ impl eframe::App for GameUI {
                     .name("Balls");
 
                 Plot::new("dynamic_plot")
-                    .view_aspect(1.2) // Adjust aspect ratio to fit the world dimensions
-                    .show_axes([false, false]) // Hide axes
+                    .show_axes([false, false])
                     .show_grid([false, false])
+                    .allow_boxed_zoom(false)
+                    .auto_bounds(Vec2b::new(false, false))
+                    .data_aspect(1.0)
                     .show(ui, |plot_ui| {
                         plot_ui.points(plot_points);
 
-
-                        // DIamond shaped obstacles
-                        let worldb = Line::new(PlotPoints::new(vec![[0.0, 0.0], [1200.0, 0.0], [1200.0, 1000.0], [0.0, 1000.0], [0.0, 0.0]]))
+                        // World Boundaries
+                        let world_boundary = Line::new(PlotPoints::new(vec![[0.0, 0.0], [1200.0, 0.0], [1200.0, 1000.0], [0.0, 1000.0], [0.0, 0.0]]))
                             .color(egui::Color32::GREEN)
-                            .name("Diamond")
+                            .name("World Boundary")
                             .width(4.0)
                             .style(LineStyle::Solid);
-                        plot_ui.line(worldb);
+                        plot_ui.line(world_boundary);
 
-
-
-                        // DIamond shaped obstacles
+                        // Diamond shaped obstacles
                         let diamond_line = Line::new(PlotPoints::new(vec![[600.0, 500.0], [650.0, 550.0], [600.0, 600.0], [550.0, 550.0], [600.0, 500.0]]))
                             .color(egui::Color32::LIGHT_BLUE)
                             .name("Diamond")
                             .width(4.0)
                             .style(LineStyle::Solid);
                         plot_ui.line(diamond_line);
-
-
                     });
             });
 
