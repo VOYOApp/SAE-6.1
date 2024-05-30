@@ -184,7 +184,7 @@ fn main() {
             .translation(vector![x, y])
             .linvel(vector![vx, vy])
             .build();
-        let collider = ColliderBuilder::ball(10.0).restitution(1.5).build();  // Add restitution to ensure bouncing
+        let collider = ColliderBuilder::cuboid(10.0, 10.0).restitution(1.0).build();  // Add restitution to ensure bouncing
 
         let body_handle = bodies.insert(rigid_body);
         colliders.insert_with_parent(collider, body_handle, &mut bodies);
@@ -262,7 +262,7 @@ fn main() {
             for sprite in &sprites {
                 if let Some(body) = bodies.get(sprite.body_handle) {
                     let pos = body.position().translation.vector;
-                    d2.draw_circle(pos.x as i32, pos.y as i32, 10.0, sprite.color);
+                    d2.draw_rectangle(pos.x as i32 - 5, pos.y as i32 - 5, 20,20, sprite.color);
                 }
             }
         }
