@@ -6,15 +6,20 @@
 )] // hide console window on Windows in release
 #![allow(rustdoc::missing_crate_level_docs)]
 
+use std::io::Lines;
+use std::str::Lines;
 use std::time::{Duration, Instant};
 
 // it's an example
 use eframe::egui;
-use egui::*;
+use egui::Color32;
 use egui_extras::*;
 use egui_plot::*;
+use egui_plot::Line;
 use rand::Rng;
 use rapier2d::prelude::*;
+use crate::app_defines::AppDefines;
+
 
 pub(crate) struct GameUI {
     physics_pipeline: PhysicsPipeline,
@@ -33,6 +38,23 @@ pub(crate) struct GameUI {
     start_time: Instant,
     loop_duration: Duration,
 }
+
+
+fn draw_polygon(
+    ui: &mut egui::Ui,
+    lines: &mut Lines,
+    color: &mut Color32,
+    width: &mut f32
+) {
+    for line in lines.iter_mut() {
+        ui.painter().add(egui::Shape::line(
+            line.clone(),
+            (*width).into(),
+            *color,
+        ));
+    }
+}
+
 
 impl Default for GameUI {
     fn default() -> Self {
@@ -145,14 +167,34 @@ impl eframe::App for GameUI {
                     .show(ui, |plot_ui| {
                         plot_ui.points(plot_points);
 
-                        // // Draw the rectangle
-                        // let rect = [
-                        //     [0.0, 0.0],
-                        //     [1200.0, 0.0],
-                        //     [1200.0, 1000.0],
-                        //     [0.0, 1000.0],
-                        // ];
-                        // plot_ui.path(Shape::closed(rect).stroke(Stroke::new(1.0, Color32::GREEN)));
+                        
+                        let line = Line::new(PlotPoints::new(vec![[0.0, 0.0], [1200.0, 0.0]]))
+                            .color(egui::Color32::GREEN)
+                            .name("Ground")
+                            .width(4.0)
+                            .style(LineStyle::Solid);
+                        plot_ui.line(line);
+
+                        let line = Line::new(PlotPoints::new(vec![[0.0, 1000.0], [1200.0, 1000.0]]))
+                            .color(egui::Color32::GREEN)
+                            .name("Ground")
+                            .width(4.0)
+                            .style(LineStyle::Solid);
+                        plot_ui.line(line);
+
+                        let line = Line::new(PlotPoints::new(vec![[0.0, 0.0], [0.0, 1000.0]]))
+                            .color(egui::Color32::GREEN)
+                            .name("Ground")
+                            .width(4.0)
+                            .style(LineStyle::Solid);
+                        plot_ui.line(line);
+
+                        let line = Line::new(PlotPoints::new(vec![[1200.0, 1000.0], [1200.0, 0.0]]))
+                            .color(egui::Color32::GREEN)
+                            .name("Ground")
+                            .width(4.0)
+                            .style(LineStyle::Solid);
+                        plot_ui.line(line);
                     });
             });
 
