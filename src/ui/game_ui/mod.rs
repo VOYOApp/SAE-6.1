@@ -195,8 +195,8 @@ impl eframe::App for GameUI {
                         .show_axes([false, false])
                         .allow_boxed_zoom(false)
                         .show_grid(false)
-                        // .auto_bounds(Vec2b::new(false, false))
-                        .show_x(false)
+                        // .auto_bounds(Vec2b::new(false, false)) // To prevent the windows to resize based on the objects position
+                        .show_x(false) // Hide the mouse position
                         .show_y(false)
                         .data_aspect(1.0)
                         .show(ui, |plot_ui| {
