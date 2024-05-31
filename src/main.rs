@@ -10,6 +10,8 @@ mod server;
 mod ui;
 mod app_defines;
 pub mod types;
+mod physics;
+mod ball;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Shared state for messages
