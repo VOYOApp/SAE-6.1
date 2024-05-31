@@ -9,7 +9,7 @@
 use std::time::{Duration, Instant};
 
 use eframe::egui;
-use egui::Vec2b;
+use egui::{Context, TopBottomPanel};
 use egui_extras::*;
 use egui_plot::*;
 use egui_plot::Line;
@@ -32,6 +32,42 @@ pub(crate) struct GameUI {
     balls: Vec<RigidBodyHandle>,
     start_time: Instant,
     loop_duration: Duration,
+    line_thickness: f32,
+    show_names: bool,
+    show_background: bool,
+}
+
+impl GameUI {
+    fn show_menu(&mut self, ctx: &Context) {
+        TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                if ui.button("Names").clicked() {}
+                if ui.button("T+").clicked() {
+                    if self.line_thickness < 20.0 {
+                        self.line_thickness += 1.0;
+                    }
+                }
+                if ui.button("T-").clicked() {
+                    if self.line_thickness > 1.0 {
+                        self.line_thickness -= 1.0;
+                    }
+                }
+                if ui.button("Reset Simulation").clicked() {
+                    if self.line_thickness < 20.0 {
+                        self.line_thickness += 1.0;
+                    }
+                }
+                if ui.button("Generate Map").clicked() {
+                    if self.line_thickness < 20.0 {
+                        self.line_thickness += 1.0;
+                    }
+                }
+                if ui.button("Show Background").clicked() {
+                    self.show_background = !self.show_background;
+                }
+            });
+        });
+    }
 }
 
 impl Default for GameUI {
@@ -70,7 +106,7 @@ impl Default for GameUI {
 
         // Create balls with random initial positions and velocities
         let mut balls = Vec::new();
-        for _ in 0..2000 {
+        for _ in 0..200 {
             let x = rng.gen_range(50.0..1150.0);
             let y = rng.gen_range(50.0..950.0);
             let vx = rng.gen_range(-50.0..50.0);
@@ -81,7 +117,7 @@ impl Default for GameUI {
                     .linvel(vector![vx, vy])
                     .build(),
             );
-            let ball_collider = ColliderBuilder::ball(10.0).restitution(1.0).build();
+            let ball_collider = ColliderBuilder::ball(10.0).restitution(-2.0).build();
             colliders.insert_with_parent(ball_collider, ball_handle, &mut bodies);
             balls.push(ball_handle);
         }
@@ -108,12 +144,17 @@ impl Default for GameUI {
             balls,
             start_time: Instant::now(),
             loop_duration: Duration::new(5, 0),
+            line_thickness: 4.0,
+            show_names: true,
+            show_background: true,
         }
     }
 }
 
 impl eframe::App for GameUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.show_menu(ctx);
+
         // Update the physics
         self.physics_pipeline.step(
             &self.gravity,
@@ -145,37 +186,61 @@ impl eframe::App for GameUI {
                 .min_width(window_width - 350.0)
                 .show_inside(ui, |ui| {
 
-                // Plot view with dynamic points
-                let plot_points = Points::new(points)
-                    .color(egui::Color32::from_rgb(255, 0, 0))
-                    .name("Balls");
+                    // Plot view with dynamic points
+                    let plot_points = Points::new(points)
+                        .color(egui::Color32::from_rgb(255, 0, 0))
+                        .name("Balls");
 
-                Plot::new("dynamic_plot")
-                    .show_axes([false, false])
-                    .show_grid([false, false])
-                    .allow_boxed_zoom(false)
-                    .auto_bounds(Vec2b::new(false, false))
-                    .data_aspect(1.0)
-                    .show(ui, |plot_ui| {
-                        plot_ui.points(plot_points);
+                    Plot::new("dynamic_plot")
+                        .show_axes([false, false])
+                        .allow_boxed_zoom(false)
+                        .show_grid(false)
+                        // .auto_bounds(Vec2b::new(false, false))
+                        .show_x(false)
+                        .show_y(false)
+                        .data_aspect(1.0)
+                        .show(ui, |plot_ui| {
+                            if self.show_background {
+                                // Custom grid lines
+                                let x_lines: Vec<f64> = (0..=1200).step_by(50).map(|x| x as f64).collect();
+                                let y_lines: Vec<f64> = (0..=1000).step_by(50).map(|y| y as f64).collect();
 
-                        // World Boundaries
-                        let world_boundary = Line::new(PlotPoints::new(vec![[0.0, 0.0], [1200.0, 0.0], [1200.0, 1000.0], [0.0, 1000.0], [0.0, 0.0]]))
-                            .color(egui::Color32::GREEN)
-                            .name("World Boundary")
-                            .width(4.0)
-                            .style(LineStyle::Solid);
-                        plot_ui.line(world_boundary);
+                                for &x in &x_lines {
+                                    let vertical_line = Line::new(PlotPoints::new(vec![[x, 0.0], [x, 1000.0]]))
+                                        .color(egui::Color32::from_rgb(0, 40, 0))
+                                        .width(self.line_thickness / 3.0)
+                                        .style(LineStyle::Solid);
+                                    plot_ui.line(vertical_line);
+                                }
 
-                        // Diamond shaped obstacles
-                        let diamond_line = Line::new(PlotPoints::new(vec![[600.0, 500.0], [650.0, 550.0], [600.0, 600.0], [550.0, 550.0], [600.0, 500.0]]))
-                            .color(egui::Color32::LIGHT_BLUE)
-                            .name("Diamond")
-                            .width(4.0)
-                            .style(LineStyle::Solid);
-                        plot_ui.line(diamond_line);
-                    });
-            });
+                                for &y in &y_lines {
+                                    let horizontal_line = Line::new(PlotPoints::new(vec![[0.0, y], [1200.0, y]]))
+                                        .color(egui::Color32::from_rgb(0, 40, 0))
+                                        .width(self.line_thickness / 3.0)
+                                        .style(LineStyle::Solid);
+                                    plot_ui.line(horizontal_line);
+                                }
+                            }
+
+
+                            plot_ui.points(plot_points);
+
+                            // World Boundaries
+                            let world_boundary = Line::new(PlotPoints::new(vec![
+                                [0.0, 0.0],
+                                [1200.0, 0.0],
+                                [1200.0, 1000.0],
+                                [0.0, 1000.0],
+                                [0.0, 0.0],
+                            ]))
+                                .color(egui::Color32::GREEN)
+                                .name("World Boundary")
+                                .width(self.line_thickness)
+                                .style(LineStyle::Solid);
+                            plot_ui.line(world_boundary);
+                        });
+                });
+
 
             egui::CentralPanel::default().show_inside(ui, |ui| {
                 TableBuilder::new(ui)
