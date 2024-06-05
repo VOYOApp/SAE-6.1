@@ -4,8 +4,8 @@ impl AppDefines {
     // ENVIRONMENT
     // calculation per sec (or step length): 60 = fine , 30 = cheaper
     pub const TARGET_FPS_2D_PHYSICS: f32 = 30.0;
-    pub const ARENA_WIDTH: f32 = 100.0;
-    pub const ARENA_HEIGHT: f32 = 80.0;
+    pub const ARENA_WIDTH: f32 = 1200.0;
+    pub const ARENA_HEIGHT: f32 = 1000.0;
     pub const OBSTACLE_PROBABILITY: f64 = 0.3;
 
     // BOT Gameplay
