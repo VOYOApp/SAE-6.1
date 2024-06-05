@@ -1,181 +1,112 @@
-use std::ops::{Div, Sub};
-
-use rand::Rng;
-use rapier2d::prelude::*;
-use raylib::prelude::*;
-
-const TARGET_FPS: u32 = 60;
-
-
-struct Sprite {
-    body_handle: RigidBodyHandle,
-    color: Color,
-}
-
-
-fn configure_camera() -> Camera2D {
-    Camera2D {
-        target: Vector2::zero(),
-        offset: Vector2::zero(),
-        rotation: 0.0,
-        zoom: 1.0,
-    }
-}
-
-fn handle_camera_input(rl: &RaylibHandle, camera: &mut Camera2D) {
-    if rl.is_mouse_button_down(MouseButton::MOUSE_LEFT_BUTTON) {
-        let delta = rl.get_mouse_position().sub(camera.offset);
-        camera.target = camera.target.sub(delta.div(camera.zoom));
-        camera.offset = rl.get_mouse_position();
-    }
-
-    let wheel = rl.get_mouse_wheel_move();
-    if wheel != 0.0 {
-        let mouse_world_pos = rl.get_screen_to_world2D(rl.get_mouse_position(), *camera);
-        camera.offset = rl.get_mouse_position();
-        camera.target = mouse_world_pos;
-
-        let mut scale_factor = 1.0 + (0.25 * wheel.abs());
-        if wheel < 0.0 {
-            scale_factor = 1.0 / scale_factor;
-        }
-        camera.zoom *= scale_factor;
-        camera.zoom = camera.zoom.clamp(0.125, 64.0);
-    }
-}
+use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
+mod server;
+use server::Entity::Entity;
 
 fn main() {
-    // Initialize raylib
-    let (mut rl, thread) = raylib::init()
-        .size(1200, 1000)
-        .resizable()
-        .title("Rapier2D with Raylib")
-        .build();
-
-    // Create the physics world
-    let mut physics_pipeline = PhysicsPipeline::new();
-    let gravity = vector![0.0, 0.0];  // No gravity
-    let integration_parameters = IntegrationParameters::default();
-    let mut islands = IslandManager::new();
-    let mut broad_phase = DefaultBroadPhase::new();
-    let mut narrow_phase = NarrowPhase::new();
-    let mut bodies = RigidBodySet::new();
-    let mut colliders = ColliderSet::new();
-    let mut ccd_solver = CCDSolver::new();
-    let mut query_pipeline = QueryPipeline::new();
-    let mut impulse_joint_set = ImpulseJointSet::new();
-    let mut multibody_joint_set = MultibodyJointSet::new();
-    let physics_hooks = ();
-    let event_handler = ();
-
-    // Define the world dimensions
-    let world_width = 1200.0;
-    let world_height = 1000.0;
-    let thickness = 10.0;  // Thickness of the boundary walls
-
-    // Define the boundaries as static colliders
-    let boundaries = [
-        // Bottom boundary
-        ColliderBuilder::cuboid(world_width / 2.0, thickness)
-            .translation(vector![world_width / 2.0, thickness / 2.0])
-            .build(),
-        // Top boundary
-        ColliderBuilder::cuboid(world_width / 2.0, thickness)
-            .translation(vector![world_width / 2.0, world_height - thickness / 2.0])
-            .build(),
-        // Left boundary
-        ColliderBuilder::cuboid(thickness, world_height / 2.0)
-            .translation(vector![thickness / 2.0, world_height / 2.0])
-            .build(),
-        // Right boundary
-        ColliderBuilder::cuboid(thickness, world_height / 2.0)
-            .translation(vector![world_width - thickness / 2.0, world_height / 2.0])
-            .build(),
-    ];
-
-    // Add the boundaries to the colliders set
-    for boundary in boundaries.iter() {
-        colliders.insert(boundary.clone());
-    }
-
-    // Create some random moving sprites
-    let mut rng = rand::thread_rng();
-    let mut sprites = Vec::new();
-
-    for _ in 0..10 {
-        let x = rng.gen_range(100.0..1100.0);
-        let y = rng.gen_range(100.0..900.0);
-        let vx = rng.gen_range(-100.0..100.0);
-        let vy = rng.gen_range(-100.0..100.0);
-
-        let rigid_body = RigidBodyBuilder::dynamic()
-            .translation(vector![x, y])
-            .linvel(vector![vx, vy])
-            .build();
-        let collider = ColliderBuilder::ball(10.0).restitution(1.5).build();  // Add restitution to ensure bouncing
-
-        let body_handle = bodies.insert(rigid_body);
-        colliders.insert_with_parent(collider, body_handle, &mut bodies);
-
-        sprites.push(Sprite {
-            body_handle,
-            color: Color::new(
-                rng.gen_range(0..256) as u8,
-                rng.gen_range(0..256) as u8,
-                rng.gen_range(0..256) as u8,
-                255,
-            ),
-        });
-    }
-
-    let mut camera = configure_camera();
-    rl.set_target_fps(TARGET_FPS);
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_systems(Startup, (spawn_camera, spawn_player).chain())
+        .add_systems(Update,(player_mov, block_players_in_bound))
+        .run();
+}
 
 
-    // Main game loop
-    while !rl.window_should_close() {
-        handle_camera_input(&rl, &mut camera);
+pub fn spawn_player(
+    mut command: Commands,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
+)
+{
+    let window = window_query.get_single().unwrap();
+    command.spawn(
+        (
+            SpriteBundle{
+                transform:Transform::from_xyz(window.width()/2.0,window.height()/2.0,0.0),
+                texture: asset_server.load("Sprite/Tanks/tankBlue.png"),
+                ..default()
+            },
+            Entity{
+                world_position: [window.width()/2.0,window.height()/2.0],
+                world_angle: 0.0,
+                size: 64.0,
+                lock: false,
+                name: "Player".to_string(),
+                color: Color::rgb(0.0,0.0,1.0),
+            },
+        ));
+}
 
-        // Step the physics simulation
-        physics_pipeline.step(
-            &gravity,
-            &integration_parameters,
-            &mut islands,
-            &mut broad_phase,
-            &mut narrow_phase,
-            &mut bodies,
-            &mut colliders,
-            &mut impulse_joint_set,
-            &mut multibody_joint_set,
-            &mut ccd_solver,
-            Some(&mut query_pipeline),
-            &physics_hooks,
-            &event_handler,
-        );
+pub const PLAYER_SPEED: f32 = 500.0;
+pub const PLAYER_SIZE: f32 = 64.0;
 
-        let mut d = rl.begin_drawing(&thread);
-        d.clear_background(Color::BLACK);
+pub fn player_mov(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut player_query: Query<&mut Transform, With<Entity>>,
+    time: Res<Time>,
+)
+{
+    if let Ok(mut transform) = player_query.get_single_mut(){
+        let mut direction = Vec3::default();
 
+        if keyboard_input.pressed(KeyCode::ArrowLeft) || keyboard_input.pressed(KeyCode::KeyA)
         {
-            let mut d2 = d.begin_mode2D(camera);
-
-            // Draw boundaries
-            d2.draw_rectangle(0, 0, 1200, 10, Color::GREEN); // Top
-            d2.draw_rectangle(0, 990, 1200, 10, Color::GREEN); // Bottom
-            d2.draw_rectangle(0, 0, 10, 1000, Color::GREEN); // Left
-            d2.draw_rectangle(1190, 0, 10, 1000, Color::GREEN); // Right
-
-            let rect = Rectangle::new(10.0, 10.0, 1180.0, 980.0);
-            d2.gui_grid(rect, 50.0, 3);
-
-
-            // Draw and update sprites
-            for sprite in &sprites {
-                if let Some(body) = bodies.get(sprite.body_handle) {
-                    let pos = body.position().translation.vector;
-                    d2.draw_circle(pos.x as i32, pos.y as i32, 10.0, sprite.color);
-                }
-            }
+            direction += Vec3::new(-1.0,0.0,0.0);
         }
+        if keyboard_input.pressed(KeyCode::ArrowRight) || keyboard_input.pressed(KeyCode::KeyD)
+        {
+            direction += Vec3::new(1.0,0.0,0.0);
+        }
+        if keyboard_input.pressed(KeyCode::ArrowUp) || keyboard_input.pressed(KeyCode::KeyW)
+        {
+            direction += Vec3::new(0.0,1.0,0.0);
+        }
+        if keyboard_input.pressed(KeyCode::ArrowDown) || keyboard_input.pressed(KeyCode::KeyS)
+        {
+            direction += Vec3::new(0.0,-1.0,0.0);
+        }
+
+        transform.translation += direction*PLAYER_SPEED*time.delta_seconds();
+
     }
+}
+
+pub fn block_players_in_bound(
+    mut player_query: Query<&mut Transform, With<Entity>>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+)
+{
+    if let Ok(mut player_transform) = player_query.get_single_mut(){
+        let window = window_query.get_single().unwrap();
+
+        let half_player_size = PLAYER_SIZE/2.0;
+        let x_min = 0.0 + half_player_size;
+        let x_max = window.width() - half_player_size;
+        let y_min = 0.0 + half_player_size;
+        let y_max = window.height() - half_player_size;
+
+        let mut translation = player_transform.translation;
+
+        if translation.x < x_min {
+            translation.x = x_min;
+        }
+        else if translation.x > x_max {
+            translation.x = x_max;
+        }
+        else if translation.y < y_min {
+            translation.y = y_min;
+        }
+        else if translation.y > y_max {
+            translation.y = y_max;
+        }
+
+        player_transform.translation = translation;
+    }
+}
+
+pub fn spawn_camera(mut commands: Commands, window_query: Query<&Window, With<PrimaryWindow>>,){
+    let window = window_query.get_single().unwrap();
+    commands.spawn(Camera2dBundle {
+        transform:Transform::from_xyz(window.width()/2.0,window.height()/2.0,0.0),
+        ..default()});
 }
