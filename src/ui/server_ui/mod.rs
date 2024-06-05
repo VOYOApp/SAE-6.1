@@ -1,39 +1,23 @@
 use std::sync::{Arc, Mutex};
-use eframe::egui;
-
-use eframe::egui::{CentralPanel, Context, RichText, TopBottomPanel, Window};
-use crate::app_defines::AppDefines;
+use eframe::egui::{self, CentralPanel, Context, RichText, TopBottomPanel, Window};
+use crate::ServerSettings;
 use crate::StyledMessage;
 
 pub struct ServerUi {
     messages: Arc<Mutex<Vec<StyledMessage>>>,
+    settings: Arc<Mutex<ServerSettings>>,
     show_about: bool,
     show_options: bool,
-    arena_width: f32,
-    arena_height: f32,
-    obstacle_probability: f64,
-    game_modes: [&'static str; 1],
-    bot_rate_of_fire: i32,
-    penalty_time: i64,
-    connection_timeout_delay: i32,
-    message_duration: i32,
-    message_length: i32,
-    score_limit: i32,
 }
 
 impl ServerUi {
-    pub fn new(messages: Arc<Mutex<Vec<StyledMessage>>>) -> Self {
-        ServerUi { messages, show_about: false, show_options: false,
-            arena_width: AppDefines::ARENA_WIDTH,
-            arena_height: AppDefines::ARENA_HEIGHT,
-            obstacle_probability: AppDefines::OBSTACLE_PROBABILITY,
-            game_modes: AppDefines::GAME_MODES,
-            bot_rate_of_fire: AppDefines::BOT_RATE_OF_FIRE,
-            penalty_time: AppDefines::PENALTY_TIME,
-            connection_timeout_delay: AppDefines::CONNECTION_TIMEOUT_DELAY,
-            message_duration: AppDefines::MESSAGE_DURATION,
-            message_length: AppDefines::MESSAGE_LENGTH,
-            score_limit: AppDefines::SCORE_LIMIT, }
+    pub fn new(messages: Arc<Mutex<Vec<StyledMessage>>>, settings: Arc<Mutex<ServerSettings>>) -> Self {
+        ServerUi {
+            messages,
+            settings,
+            show_about: false,
+            show_options: false,
+        }
     }
 
     fn show_menu(&mut self, ctx: &Context) {
@@ -80,54 +64,55 @@ impl ServerUi {
     }
     fn show_options_dialog(&mut self, ctx: &Context) {
         let mut show_options = self.show_options;
+        let mut settings = self.settings.lock().unwrap();
         Window::new("Game Settings")
             .open(&mut show_options)
             .show(ctx, |ui| {
 
                 ui.horizontal(|ui| {
                     ui.label("Connection Timeout Delay:");
-                    ui.add(egui::DragValue::new(&mut self.connection_timeout_delay));
+                    ui.add(egui::DragValue::new(&mut settings.connection_timeout_delay));
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Bot Rate of Fire:");
-                    ui.add(egui::DragValue::new(&mut self.bot_rate_of_fire));
+                    ui.add(egui::DragValue::new(&mut settings.bot_rate_of_fire));
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Penalty Time:");
-                    ui.add(egui::DragValue::new(&mut self.penalty_time));
+                    ui.add(egui::DragValue::new(&mut settings.penalty_time));
                 });
 
 
                 ui.horizontal(|ui| {
                     ui.label("Message Duration:");
-                    ui.add(egui::DragValue::new(&mut self.message_duration));
+                    ui.add(egui::DragValue::new(&mut settings.message_duration));
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Message Length:");
-                    ui.add(egui::DragValue::new(&mut self.message_length));
+                    ui.add(egui::DragValue::new(&mut settings.message_length));
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Score Limit:");
-                    ui.add(egui::DragValue::new(&mut self.score_limit));
+                    ui.add(egui::DragValue::new(&mut settings.score_limit));
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Arena Width:");
-                    ui.add(egui::DragValue::new(&mut self.arena_width));
+                    ui.add(egui::DragValue::new(&mut settings.arena_width));
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Arena Height:");
-                    ui.add(egui::DragValue::new(&mut self.arena_height));
+                    ui.add(egui::DragValue::new(&mut settings.arena_height));
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Obstacle Probability:");
-                    ui.add(egui::DragValue::new(&mut self.obstacle_probability));
+                    ui.add(egui::DragValue::new(&mut settings.obstacle_probability));
                 });
 
                 if ui.button("Apply").clicked() {

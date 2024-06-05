@@ -1,24 +1,23 @@
+use crate::app_defines::AppDefines;
 use std::io::{BufRead, BufReader, BufWriter};
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::app_defines::AppDefines;
+use crate::server::server_thread::ServerSettings;
 use crate::types::{add_message, MessageType, StyledMessage};
 
-const CONNECTION_COUNT: u64 = 0;
-// const INTERRUPT: bool = false;
-
 pub(crate) struct ClientHandler {
-    pub(crate) socket : TcpStream,
+    pub(crate) socket: TcpStream,
     pub(crate) buf_writer: BufWriter<TcpStream>,
     pub(crate) buf_reader: BufReader<TcpStream>,
     pub(crate) previous_time: u64,
     pub(crate) messages: Arc<Mutex<Vec<StyledMessage>>>,
+    pub(crate) settings: Arc<Mutex<ServerSettings>>,
 }
 
 impl ClientHandler {
-    pub fn new(socket: TcpStream, messages: Arc<Mutex<Vec<StyledMessage>>>) -> Self {
+    pub fn new(socket: TcpStream, messages: Arc<Mutex<Vec<StyledMessage>>>, settings: Arc<Mutex<ServerSettings>>) -> Self {
         let buf_writer = BufWriter::new(socket.try_clone().unwrap());
         let buf_reader = BufReader::new(socket.try_clone().unwrap());
         ClientHandler {
@@ -27,12 +26,13 @@ impl ClientHandler {
             buf_reader,
             previous_time: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
             messages,
+            settings,
         }
     }
     pub fn run(&mut self) {
         let mut received_message = String::new();
         let mut running = true;
-
+        println!("Server option: {:?}", self.settings.lock().unwrap().arena_width);
         while running {
             if self.check_timeout() {
                 break;
