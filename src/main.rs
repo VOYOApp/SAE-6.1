@@ -21,8 +21,8 @@ const PLAYER_SPEED: f32 = 500.0;
 const PLAYER_SIZE: f32 = 64.0;
 const BOUNDARY_THICKNESS: f32 = 5.0;
 const BOUNDARY_COLOR: Color = Color::rgb(0.0, 1.0, 0.0);
-const BOUNDARY_WIDTH: f32 = 1200.0;
-const BOUNDARY_HEIGHT: f32 = 1000.0;
+const BOUNDARY_WIDTH: f32 = 700.0;
+const BOUNDARY_HEIGHT: f32 = 500.0;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 
