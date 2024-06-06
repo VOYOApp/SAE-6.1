@@ -23,7 +23,7 @@ pub fn spawn_player(
         (
             SpriteBundle{
                 transform:Transform::from_xyz(window.width()/2.0,window.height()/2.0,0.0),
-                texture: asset_server.load("Sprite/Tanks/tankBlue.png"),
+                texture: asset_server.load("images/tank.png"),
                 ..default()
             },
             Entity{
