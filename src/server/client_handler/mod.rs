@@ -1,5 +1,5 @@
 use crate::app_defines::AppDefines;
-use std::io::{BufRead, BufReader, BufWriter};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -32,7 +32,6 @@ impl ClientHandler {
     pub fn run(&mut self) {
         let mut received_message = String::new();
         let mut running = true;
-        println!("Server option: {:?}", self.settings.lock().unwrap().arena_width);
         while running {
             if self.check_timeout() {
                 break;
@@ -70,7 +69,7 @@ impl ClientHandler {
     fn handle_received_message(&mut self, received_message: &str) {
         let all_messages: Vec<&str> = received_message.trim().split(AppDefines::COMMAND_SEP).collect();
         for message in all_messages {
-            println!("Message {:?}", message);
+            // println!("Message {:?}", message);
             match message {
                 AppDefines::QUIT => {
                     self.handle_disconnection();
@@ -83,17 +82,66 @@ impl ClientHandler {
     }
 
     fn process_message(&mut self, received: &str) {
-        println!("Default TODO PROCESS MESSAGE");
+        let mut message_values = received.split(AppDefines::ARGUMENT_SEP).collect::<Vec<&str>>();
+        let code_message = message_values[0];
+        println!("Processing message: {:?}", received);
+        println!("Values: {:?}", message_values);
+        println!("Commande values: {:?}", code_message);
+        println!("\n");
+        let response = match code_message {
+            AppDefines::SET_NAME => {
+                "TODO SET NAME".to_string()
+            }
+            AppDefines::SET_COLOR => {
+                "TODO SET COLOR".to_string()
+            }
+            AppDefines::ALIVE => {
+                "TODO ALIVE".to_string()
+            }
+            AppDefines::MESSAGE => {
+                "TODO MESSAGE".to_string()
+            }
+            AppDefines::QUERY_CLOSEST_BOT => {
+                "TODO QUERY CLOSEST BOT".to_string()
+            }
+            AppDefines::QUERY_CLOSEST_PROJECTILE => {
+                "TODO QUERY CLOSEST PROJECTILE".to_string()
+            }
+            AppDefines::QUERY_BY_NAME => {
+                "TODO QUERY BY NAME".to_string()
+            }
+            AppDefines::QUERY_NAME_LIST => {
+                "TODO QUERY NAME LIST".to_string()
+            }
+            AppDefines::QUERY_ORIENTATION => {
+                "TODO QUERY ORIENTATION".to_string()
+            }
+            AppDefines::QUERY_MESSAGES_FROM_USER => {
+                "TODO QUERY MESSAGES FROM USER".to_string()
+            }
+            AppDefines::EMPTY_REPLY => {
+                "TODO EMPTY REPLY".to_string()
+            }
+            _ => {
+                "ERROR".to_string()
+            }
+        };
+        if let Err(e) = self.buf_writer.write_all(response.as_bytes()) {
+            println!("Failed to send response: {}", e);
+        }
+
+        if let Err(e) = self.buf_writer.flush() {
+            println!("Failed to flush response: {}", e);
+        }
     }
 
     fn handle_disconnection(&mut self) {
-        println!("Client disconnected: {:?}", self.socket.peer_addr().unwrap());
         add_message(
             &self.messages,
-            format!("[INFO] Client disconnected: {}", self.socket.peer_addr().unwrap()),
+            format!("[INFO] Client disconnected: {:?}", self.socket.peer_addr()),
             MessageType::Info,
         );
-        self.socket.shutdown(std::net::Shutdown::Both).unwrap();
+        self.socket.shutdown(std::net::Shutdown::Both);
     }
 
     pub fn add_to_reponse(mut reponse: String, message: String) {
