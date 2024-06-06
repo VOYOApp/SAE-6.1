@@ -1,17 +1,17 @@
 use std::sync::{Arc, Mutex};
 use std::thread;
+use bevy::app::{App, Startup, Update};
+use bevy::DefaultPlugins;
+use bevy::winit::WinitSettings;
 
 pub use types::StyledMessage;
 
 use crate::server::server_thread::ServerThread;
-use crate::ui::game_ui::GameUI;
 
 mod server;
 mod ui;
 mod app_defines;
 pub mod types;
-mod physics;
-mod ball;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Shared state for messages
@@ -27,11 +27,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let options = eframe::NativeOptions::default();
-    eframe::run_native(
-        "Physics Simulation",
-        options,
-        Box::new(|_cc| Box::new(GameUI::default())),
-    ).expect("TODO: panic message");
+    App::new()
+        .add_plugins(DefaultPlugins)
+        // Only run the app when there is user input. This will significantly reduce CPU/GPU use.
+        .insert_resource(WinitSettings::desktop_app())
+        .add_systems(Startup, crate::ui::game_ui::setup)
+        .run();
 
     // Run the GUI in the main thread
     let native_options = eframe::NativeOptions::default();
