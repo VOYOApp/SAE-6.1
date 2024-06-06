@@ -1,5 +1,5 @@
 use bevy::prelude::Component;
-
+pub mod MovingObject;
 #[derive(Component)]
 pub(crate) struct Entity{
     pub(crate) world_position: [f32; 2],
