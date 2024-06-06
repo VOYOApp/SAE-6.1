@@ -37,19 +37,6 @@ impl ServerSettings {
             score_limit: AppDefines::SCORE_LIMIT,
         }
     }
-
-    pub fn print_settings(&self) {
-        println!("Server Settings:");
-        println!("Arena Width: {}", self.arena_width);
-        println!("Arena Height: {}", self.arena_height);
-        println!("Obstacle Probability: {}", self.obstacle_probability);
-        println!("Bot Rate of Fire: {}", self.bot_rate_of_fire);
-        println!("Penalty Time: {}", self.penalty_time);
-        println!("Connection Timeout Delay: {}", self.connection_timeout_delay);
-        println!("Message Duration: {}", self.message_duration);
-        println!("Message Length: {}", self.message_length);
-        println!("Score Limit: {}", self.score_limit);
-    }
 }
 
 pub(crate) struct ServerThread {

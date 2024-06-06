@@ -44,7 +44,6 @@ impl ServerUi {
             });
         });
     }
-
     fn show_about_dialog(&mut self, ctx: &Context) {
         if self.show_about {
             Window::new("About")

@@ -26,14 +26,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         serv.start();
     });
 
-    settings.lock().unwrap().print_settings();
-
-    let options = eframe::NativeOptions::default();
-    eframe::run_native(
-        "Physics Simulation",
-        options,
-        Box::new(|_cc| Box::new(GameUI::default())),
-    ).expect("TODO: panic message");
+    // let options = eframe::NativeOptions::default();
+    // eframe::run_native(
+    //     "Physics Simulation",
+    //     options,
+    //     Box::new(|_cc| Box::new(GameUI::default())),
+    // ).expect("TODO: panic message");
 
     // Run the GUI in the main thread
     let native_options = eframe::NativeOptions::default();
