@@ -1,11 +1,11 @@
 use std::time::Duration;
 use std::time::Instant;
+use rand::Rng;
 
 use eframe::egui;
 use egui::{Align2, Context, TopBottomPanel};
 use egui_extras::*;
 use egui_plot::*;
-use rand::Rng;
 use rapier2d::prelude::*;
 
 use crate::ball::ball::Ball;
@@ -124,6 +124,23 @@ impl GameUI {
         }
     }
 
+    fn reset_simulation(&mut self) {
+        for entity in &mut self.entities {
+            entity.score = 0;
+        }
+        self.balls.clear();
+    }
+
+    fn generate_map(&mut self) {
+        let mut rng = rand::thread_rng();
+        for entity in &mut self.entities {
+            let random_x = rng.gen_range(10.0..1190.0);
+            let random_y = rng.gen_range(10.0..990.0);
+            let body = &mut self.physics_engine.bodies[entity.handle];
+            body.set_translation(vector![random_x, random_y], true);
+        }
+    }
+
     fn show_menu(&mut self, ctx: &Context) {
         TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -141,10 +158,10 @@ impl GameUI {
                     }
                 }
                 if ui.button("Reset Simulation").clicked() {
-                    // Implement reset logic here
+                    self.reset_simulation();
                 }
                 if ui.button("Generate Map").clicked() {
-                    // Implement map generation logic here
+                    self.generate_map();
                 }
                 if ui.button("Show Background").clicked() {
                     self.show_background = !self.show_background;
@@ -198,7 +215,7 @@ impl eframe::App for GameUI {
         self.show_menu(ctx);
 
         // Shoot balls every 500ms
-        if self.last_shot.elapsed() > Duration::from_millis(100) {
+        if self.last_shot.elapsed() > Duration::from_millis(500) {
             if let Some(entity) = self.entities.first() {
                 self.shoot_ball(entity.handle);
             }
@@ -208,6 +225,19 @@ impl eframe::App for GameUI {
         // Update the physics
         self.physics_engine.step();
 
+        // // Check for ball collisions and remove collided balls
+        // let mut collision_events = vec![];
+        // self.physics_engine.events.collect(&mut collision_events);
+        //
+        // for event in collision_events {
+        //     if let CollisionEvent::Started(collider1, collider2, _) = event {
+        //         if let Some(ball_index) = self.balls.iter().position(|ball| {
+        //             ball.handle == self.physics_engine.colliders[collider1].parent() || ball.handle == self.physics_engine.colliders[collider2].parent()
+        //         }) {
+        //             self.balls.remove(ball_index);
+        //         }
+        //     }
+        // }
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::SidePanel::left("entity_list").show_inside(ui, |ui| {
