@@ -4,6 +4,7 @@ use crate::physics::physics::PhysicsEngine;
 
 pub struct Ball {
     pub handle: RigidBodyHandle,
+    pub(crate) shooter: RigidBodyHandle, // To track who shot the ball
 }
 
 pub fn create_balls(engine: &mut PhysicsEngine, count: usize) -> Vec<Ball> {
@@ -23,7 +24,7 @@ pub fn create_balls(engine: &mut PhysicsEngine, count: usize) -> Vec<Ball> {
         );
         let ball_collider = ColliderBuilder::ball(10.0).restitution(-2.0).build();
         engine.colliders.insert_with_parent(ball_collider, ball_handle, &mut engine.bodies);
-        balls.push(Ball { handle: ball_handle });
+        balls.push(Ball { handle: ball_handle , shooter: ball_handle});
     }
 
     balls
