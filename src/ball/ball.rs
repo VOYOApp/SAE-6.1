@@ -28,3 +28,23 @@ pub fn create_balls(engine: &mut PhysicsEngine, count: usize) -> Vec<Ball> {
 
     balls
 }
+
+
+pub struct Player {
+    pub name: String,
+    pub score: i32,
+    pub handle: RigidBodyHandle,
+}
+
+pub fn create_player(engine: &mut PhysicsEngine, name: String) -> Player {
+    let x = 600.0;
+    let y = 500.0;
+    let player_handle = engine.bodies.insert(
+        RigidBodyBuilder::dynamic()
+            .translation(vector![x, y])
+            .build(),
+    );
+    let player_collider = ColliderBuilder::cuboid(10.0, 10.0).build();
+    engine.colliders.insert_with_parent(player_collider, player_handle, &mut engine.bodies);
+    Player { name, score: 0, handle: player_handle }
+}

@@ -3,18 +3,63 @@ use egui::{Context, TopBottomPanel};
 use egui_extras::*;
 use egui_plot::*;
 use rapier2d::prelude::*;
+
+use crate::ball::ball::{Ball, create_balls};
 use crate::physics::physics::PhysicsEngine;
-use crate::ball::ball::{create_balls, Ball};
 
 pub struct GameUI {
     physics_engine: PhysicsEngine,
     balls: Vec<Ball>,
+    entities: Vec<Entity>,
     line_thickness: f32,
     show_names: bool,
     show_background: bool,
 }
 
+
+struct Entity {
+    name: String,
+    score: i32,
+    handle: RigidBodyHandle,
+}
+
+
 impl GameUI {
+    fn add_entity(&mut self, name: String) {
+        let handle = self.physics_engine.bodies.insert(
+            RigidBodyBuilder::dynamic()
+                .translation(vector![600.0, 500.0])
+                .build(),
+        );
+        let collider = ColliderBuilder::cuboid(10.0, 10.0).build();
+        self.physics_engine.colliders.insert_with_parent(
+            collider,
+            handle,
+            &mut self.physics_engine.bodies,
+        );
+
+        self.entities.push(Entity {
+            name,
+            score: 0,
+            handle,
+        });
+    }
+
+    fn remove_entity(&mut self, name: &str) {
+        if let Some(pos) = self.entities.iter().position(|e| e.name == name) {
+            let entity = self.entities.remove(pos);
+            self.physics_engine.bodies.remove(entity.handle, &mut Default::default(), &mut Default::default(), &mut Default::default(), &mut Default::default(), false);
+        }
+    }
+
+    fn display_entities(&self, plot_ui: &mut PlotUi) {
+        for entity in &self.entities {
+            let body = &self.physics_engine.bodies[entity.handle];
+            let pos = [body.translation().x as f64, body.translation().y as f64];
+            plot_ui.points(Points::new(vec![pos]).color(egui::Color32::YELLOW).name("Entity"));
+        }
+    }
+
     fn show_menu(&mut self, ctx: &Context) {
         TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -41,6 +86,12 @@ impl GameUI {
                 }
                 if ui.button("Show Background").clicked() {
                     self.show_background = !self.show_background;
+                }
+                if ui.button("Add Entity").clicked() {
+                    self.add_entity("Player".to_string());
+                }
+                if ui.button("Remove Entity").clicked() {
+                    self.remove_entity("Player");
                 }
             });
         });
@@ -73,6 +124,7 @@ impl Default for GameUI {
         Self {
             physics_engine,
             balls,
+            entities: Vec::new(),
             line_thickness: 4.0,
             show_names: true,
             show_background: true,
@@ -135,6 +187,7 @@ impl eframe::App for GameUI {
                             }
 
                             plot_ui.points(plot_points);
+                            self.display_entities(plot_ui); // Display entities
 
                             let world_boundary = Line::new(PlotPoints::new(vec![
                                 [0.0, 0.0],
@@ -164,11 +217,9 @@ impl eframe::App for GameUI {
                         });
                     })
                     .body(|mut body| {
-                        let players = vec!["Lopi5555", "Hethan_hdb", "Vavaaaaaah"];
-                        let scores = vec!["5", "19", "0"];
                         let padding = 10.0;
 
-                        for (index, (player, score)) in players.iter().zip(scores.iter()).enumerate() {
+                        for (index, entity) in self.entities.iter().enumerate() {
                             body.row(30.0, |mut row| {
                                 let bg_color = if index % 2 == 0 {
                                     egui::Color32::from_gray(20)
@@ -179,14 +230,14 @@ impl eframe::App for GameUI {
                                     ui.painter().rect_filled(ui.max_rect(), 0.0, bg_color);
                                     ui.horizontal_centered(|ui| {
                                         ui.add_space(padding);
-                                        ui.colored_label(egui::Color32::from_rgb(255, 255, 255), *player);
+                                        ui.colored_label(egui::Color32::from_rgb(255, 255, 255), &entity.name);
                                     });
                                 });
                                 row.col(|ui| {
                                     ui.painter().rect_filled(ui.max_rect(), 0.0, bg_color);
                                     ui.horizontal_centered(|ui| {
                                         ui.add_space(padding);
-                                        ui.colored_label(egui::Color32::from_rgb(255, 255, 255), *score);
+                                        ui.colored_label(egui::Color32::from_rgb(255, 255, 255), &entity.score.to_string());
                                     });
                                 });
                             });
