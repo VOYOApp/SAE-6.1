@@ -4,7 +4,7 @@ use egui_extras::*;
 use egui_plot::*;
 use rapier2d::prelude::*;
 
-use crate::ball::ball::{Ball, create_balls};
+use crate::ball::ball::Ball;
 use crate::physics::physics::PhysicsEngine;
 
 pub struct GameUI {
@@ -25,6 +25,57 @@ struct Entity {
 
 
 impl GameUI {
+    fn display_entities(&self, plot_ui: &mut PlotUi) {
+        for entity in &self.entities {
+            let body = &self.physics_engine.bodies[entity.handle];
+            let pos = [body.translation().x as f64, body.translation().y as f64];
+            let angle = body.rotation().angle();
+
+            let points = vec![
+                [
+                    pos[0] + self.line_thickness as f64 * 1.5 * angle.cos() as f64,
+                    pos[1] + self.line_thickness as f64 * 1.5 * angle.sin() as f64,
+                ],
+                [
+                    pos[0] - self.line_thickness as f64 * 1.5 * (angle as f64 + std::f64::consts::FRAC_PI_4).cos() ,
+                    pos[1] - self.line_thickness as f64 * 1.5 * (angle as f64 + std::f64::consts::FRAC_PI_4).sin() ,
+                ],
+                [
+                    pos[0] - self.line_thickness as f64 * 1.5 * (angle as f64 - std::f64::consts::FRAC_PI_4).cos(),
+                    pos[1] - self.line_thickness as f64 * 1.5 * (angle as f64 - std::f64::consts::FRAC_PI_4).sin(),
+                ],
+            ];
+
+            plot_ui.line(
+                Line::new(PlotPoints::new(points))
+                    .color(egui::Color32::BLUE)
+                    .width(self.line_thickness),
+            );
+        }
+    }
+    fn shoot_ball(&mut self, entity_handle: RigidBodyHandle) {
+        if let Some(entity) = self.entities.iter().find(|e| e.handle == entity_handle) {
+            let body = &self.physics_engine.bodies[entity.handle];
+            let pos = body.translation();
+            let angle = body.rotation().angle();
+            let direction = vector![angle.cos(), angle.sin()];
+
+            let ball_handle = self.physics_engine.bodies.insert(
+                RigidBodyBuilder::dynamic()
+                    .translation(*pos)
+                    .linvel(direction * 500.0)
+                    .build(),
+            );
+            let ball_collider = ColliderBuilder::ball(5.0).build();
+            self.physics_engine.colliders.insert_with_parent(
+                ball_collider,
+                ball_handle,
+                &mut self.physics_engine.bodies,
+            );
+
+            self.balls.push(Ball { handle: ball_handle });
+        }
+    }
     fn add_entity(&mut self, name: String) {
         let handle = self.physics_engine.bodies.insert(
             RigidBodyBuilder::dynamic()
@@ -52,13 +103,6 @@ impl GameUI {
         }
     }
 
-    fn display_entities(&self, plot_ui: &mut PlotUi) {
-        for entity in &self.entities {
-            let body = &self.physics_engine.bodies[entity.handle];
-            let pos = [body.translation().x as f64, body.translation().y as f64];
-            plot_ui.points(Points::new(vec![pos]).color(egui::Color32::YELLOW).name("Entity"));
-        }
-    }
 
     fn show_menu(&mut self, ctx: &Context) {
         TopBottomPanel::top("menu_bar").show(ctx, |ui| {
@@ -119,11 +163,9 @@ impl Default for GameUI {
         let right_wall_collider = ColliderBuilder::cuboid(10.0, 500.0).build();
         physics_engine.colliders.insert_with_parent(right_wall_collider, right_wall_handle, &mut physics_engine.bodies);
 
-        let balls = create_balls(&mut physics_engine, 200);
-
         Self {
             physics_engine,
-            balls,
+            balls: Vec::new(),
             entities: Vec::new(),
             line_thickness: 4.0,
             show_names: true,
@@ -132,12 +174,20 @@ impl Default for GameUI {
     }
 }
 
+
 impl eframe::App for GameUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.show_menu(ctx);
 
         // Update the physics
         self.physics_engine.step();
+
+        // Remove balls that have collided with boundaries or other bodies
+        self.balls.retain(|ball| {
+            let ball_body = &self.physics_engine.bodies[ball.handle];
+            let pos = ball_body.translation();
+            !(pos.x <= 10.0 || pos.x >= 1190.0 || pos.y <= 10.0 || pos.y >= 990.0)
+        });
 
         let points: Vec<_> = self.balls.iter().map(|ball| {
             let ball = &self.physics_engine.bodies[ball.handle];
@@ -249,3 +299,4 @@ impl eframe::App for GameUI {
         ctx.request_repaint();
     }
 }
+
