@@ -1,8 +1,10 @@
 use bevy::asset::AssetServer;
 use bevy::input::ButtonInput;
 use bevy::math::{Vec2, Vec3};
-use bevy::prelude::{Camera2dBundle, Color, Commands, Component, default, KeyCode, Query, Res, Sprite, SpriteBundle, Time, Transform, Window, With};
+use bevy::prelude::{Camera2dBundle, Color, Commands, Component, default, KeyCode, Query, Res, Sprite, SpriteBundle, Time, Transform, Window, With, TextBundle, Text, TextStyle, Font, Handle};
 use bevy::window::PrimaryWindow;
+use bevy::text::Text2dBundle;
+
 use crate::server::Entity::Entity;
 use crate::server::Entity::MovingObject::MovingObject;
 use crate::server::Entity::MovingObject::ship::ship;
@@ -23,11 +25,15 @@ pub fn spawn_player(
     asset_server: Res<AssetServer>,
 ) {
     let window = window_query.get_single().unwrap();
-    commands.spawn(
+    let player_texture = asset_server.load("images/tank.png");
+    let font_handle = asset_server.load("fonts/FiraSans-Bold.ttf");  // Ensure this path is correct
+
+    // Spawn player ship
+    let ship_entity = commands.spawn(
         (
             SpriteBundle {
                 transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0),
-                texture: asset_server.load("images/tank.png"),
+                texture: player_texture.clone(),
                 ..default()
             },
             ship {
@@ -45,8 +51,34 @@ pub fn spawn_player(
                 left_wheel: 0.0,
                 gun_orientation: [0.0, 0.0],
             }
-        ));
+        ))
+        .id();
+
+    // Spawn text for the player ship name
+    commands.spawn((
+        Text2dBundle {
+            text: Text::from_section(
+                "player",
+                TextStyle {
+                    font: font_handle.clone(),
+                    font_size: 30.0,
+                    color: Color::WHITE,
+                }
+            ),
+            transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0 + PLAYER_SIZE / 2.0 + 15.0, 1.0),
+            ..default()
+        },
+        PlayerNameTag { ship_entity },
+    ));
 }
+
+
+#[derive(Component)]
+pub struct PlayerNameTag {
+    pub ship_entity: bevy::prelude::Entity,
+}
+
+
 
 pub fn block_players_in_bound(
     mut player_query: Query<&mut Transform, With<ship>>,
@@ -214,3 +246,16 @@ pub fn resize_boundaries(
         }
     }
 }
+
+pub fn update_name_tag_position(
+    mut name_query: Query<(&PlayerNameTag, &mut Transform)>,
+    ship_query: Query<&Transform, With<ship>>,
+) {
+    for (name_tag, mut name_transform) in name_query.iter_mut() {
+        if let Ok(ship_transform) = ship_query.get(name_tag.ship_entity) {
+            name_transform.translation.x = ship_transform.translation.x;
+            name_transform.translation.y = ship_transform.translation.y + PLAYER_SIZE / 2.0 + 15.0;
+        }
+    }
+}
+
