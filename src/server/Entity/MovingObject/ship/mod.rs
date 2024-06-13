@@ -1,4 +1,5 @@
-use bevy::prelude::Component;
+use bevy::input::ButtonInput;
+use bevy::prelude::{Component, KeyCode, Res};
 use crate::server::Entity::MovingObject::MovingObject;
 
 #[derive(Component)]
@@ -40,6 +41,27 @@ impl ship{
 
     pub fn set_gun_orientation(&mut self, gun_orientation: [f32; 2]){
         self.gun_orientation = gun_orientation
+    }
+
+    pub(crate) fn update_wheels(&mut self, keys: Res<ButtonInput<KeyCode>>) {
+        // Set default to stop
+        self.right_wheel = 0.5;
+        self.left_wheel = 0.5;
+
+        // Adjust wheels based on input
+        if keys.pressed(KeyCode::ArrowUp) {
+            self.right_wheel = 1.0;
+            self.left_wheel = 1.0;
+        } else if keys.pressed(KeyCode::ArrowDown) {
+            self.right_wheel = 0.0;
+            self.left_wheel = 0.0;
+        } else if keys.pressed(KeyCode::ArrowRight) {
+            self.left_wheel = 1.0;
+            self.right_wheel = 0.5;
+        } else if keys.pressed(KeyCode::ArrowLeft) {
+            self.right_wheel = 1.0;
+            self.left_wheel = 0.5;
+        }
     }
 
     pub fn get_gun_orientation(&self) -> &[f32; 2]{

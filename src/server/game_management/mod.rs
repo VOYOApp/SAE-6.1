@@ -1,6 +1,6 @@
 use bevy::asset::AssetServer;
 use bevy::input::ButtonInput;
-use bevy::math::{Vec2, Vec3};
+use bevy::math::{Quat, Vec2, Vec3};
 use bevy::prelude::{Camera2dBundle, Color, Commands, Component, default, KeyCode, Query, Res, Sprite, SpriteBundle, Time, Transform, Window, With, TextBundle, Text, TextStyle, Font, Handle};
 use bevy::window::PrimaryWindow;
 use bevy::text::Text2dBundle;
@@ -19,7 +19,11 @@ const BOUNDARY_HEIGHT: f32 = 500.0;
 #[derive(Component)]
 pub struct Boundary;
 
-pub fn spawn_player(
+struct ShipResource {
+    ship: ship,
+}
+
+pub(crate) fn spawn_player(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
     asset_server: Res<AssetServer>,
@@ -47,8 +51,8 @@ pub fn spawn_player(
                         color: Color::rgb(0.0, 1.0, 0.0),
                     }
                 },
-                right_wheel: 0.0,
-                left_wheel: 0.0,
+                right_wheel: 0.5,
+                left_wheel: 0.5,
                 gun_orientation: [0.0, 0.0],
             }
         ))
@@ -72,13 +76,10 @@ pub fn spawn_player(
     ));
 }
 
-
 #[derive(Component)]
 pub struct PlayerNameTag {
     pub ship_entity: bevy::prelude::Entity,
 }
-
-
 
 pub fn block_players_in_bound(
     mut player_query: Query<&mut Transform, With<ship>>,
@@ -112,26 +113,31 @@ pub fn block_players_in_bound(
 
 pub fn player_mov(
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut player_query: Query<&mut Transform, With<ship>>,
+    mut query: Query<(&mut ship, &mut Transform)>,
     time: Res<Time>,
 ) {
-    if let Ok(mut transform) = player_query.get_single_mut() {
-        let mut direction = Vec3::ZERO;
+    if let Ok((mut ship, mut transform)) = query.get_single_mut() {
+        ship.update_wheels(keyboard_input);
 
-        if keyboard_input.pressed(KeyCode::ArrowLeft) || keyboard_input.pressed(KeyCode::KeyA) {
-            direction += Vec3::new(-1.0, 0.0, 0.0);
-        }
-        if keyboard_input.pressed(KeyCode::ArrowRight) || keyboard_input.pressed(KeyCode::KeyD) {
-            direction += Vec3::new(1.0, 0.0, 0.0);
-        }
-        if keyboard_input.pressed(KeyCode::ArrowUp) || keyboard_input.pressed(KeyCode::KeyW) {
-            direction += Vec3::new(0.0, 1.0, 0.0);
-        }
-        if keyboard_input.pressed(KeyCode::ArrowDown) || keyboard_input.pressed(KeyCode::KeyS) {
-            direction += Vec3::new(0.0, -1.0, 0.0);
-        }
+        let delta_seconds = time.delta_seconds();
+        let rotation_speed = std::f32::consts::PI;
+        let forward_speed = 500.0;
 
-        transform.translation += direction * PLAYER_SPEED * time.delta_seconds();
+        if ship.left_wheel == 1.0 && ship.right_wheel == 1.0 {
+            // Move forward
+            let forward = transform.rotation * Vec3::Y;
+            transform.translation += forward * forward_speed * delta_seconds;
+        } else if ship.left_wheel == 0.0 && ship.right_wheel == 0.0 {
+            // Move backward
+            let backward = transform.rotation * Vec3::Y;
+            transform.translation -= backward * forward_speed * delta_seconds;
+        } else if ship.left_wheel == 1.0 && ship.right_wheel == 0.5 {
+            // Turn right
+            transform.rotate(Quat::from_rotation_z(-rotation_speed * delta_seconds));
+        } else if ship.right_wheel == 1.0 && ship.left_wheel == 0.5 {
+            // Turn left
+            transform.rotate(Quat::from_rotation_z(rotation_speed * delta_seconds));
+        }
     }
 }
 
