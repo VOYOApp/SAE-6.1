@@ -16,7 +16,7 @@ impl ServerThread {
         ServerThread { port, messages }
     }
 
-    pub(crate) fn start(&self) {
+    pub(crate) async fn start(&self) {
         let listener = TcpListener::bind(("127.0.0.1", self.port)).expect("Could not bind to port");
 
         add_message(

@@ -11,7 +11,9 @@ mod ui;
 mod app_defines;
 pub mod types;
 mod physics;
-mod ball;
+mod entities;
+mod bullet;
+mod game_logic;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Shared state for messages
@@ -22,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start the server in a separate thread
     thread::spawn(move || {
-        let serv = ServerThread::new(6969, server_messages);
+        let serv = ServerThread::new(6969, server_messages); 
         serv.start();
     });
 
@@ -43,4 +45,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-

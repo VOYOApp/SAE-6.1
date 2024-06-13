@@ -1,36 +1,25 @@
 use std::time::Duration;
 use std::time::Instant;
-use rand::Rng;
 
 use eframe::egui;
 use egui::{Align2, Context, TopBottomPanel};
 use egui_extras::*;
 use egui_plot::*;
-use rapier2d::prelude::*;
 
-use crate::ball::ball::Ball;
-use crate::physics::physics::PhysicsEngine;
+use crate::game_logic::GameLogic;
 
 pub struct GameUI {
-    physics_engine: PhysicsEngine,
-    balls: Vec<Ball>,
-    entities: Vec<Entity>,
+    game_logic: GameLogic,
     line_thickness: f32,
     show_names: bool,
     show_background: bool,
     last_shot: Instant,
 }
 
-struct Entity {
-    name: String,
-    score: i32,
-    handle: RigidBodyHandle,
-}
-
 impl GameUI {
     fn display_entities(&self, plot_ui: &mut PlotUi) {
-        for entity in &self.entities {
-            let body = &self.physics_engine.bodies[entity.handle];
+        for entity in &self.game_logic.entities {
+            let body = &self.game_logic.physics_engine.bodies[entity.handle];
             let pos = [body.translation().x as f64, body.translation().y as f64];
             let angle = body.rotation().angle();
 
@@ -66,81 +55,6 @@ impl GameUI {
         }
     }
 
-    fn shoot_ball(&mut self, entity_handle: RigidBodyHandle) {
-        if let Some(entity) = self.entities.iter().find(|e| e.handle == entity_handle) {
-            let body = &self.physics_engine.bodies[entity.handle];
-            let pos = body.translation();
-            let angle = body.rotation().angle();
-            let direction = vector![angle.cos(), angle.sin()];
-
-            let ball_handle = self.physics_engine.bodies.insert(
-                RigidBodyBuilder::dynamic()
-                    .translation(*pos)
-                    .linvel(direction * 500.0)
-                    .build(),
-            );
-            let ball_collider = ColliderBuilder::ball(self.line_thickness).build();
-            self.physics_engine.colliders.insert_with_parent(
-                ball_collider,
-                ball_handle,
-                &mut self.physics_engine.bodies,
-            );
-
-            self.balls.push(Ball { handle: ball_handle, shooter: entity.handle });
-        }
-    }
-
-    fn add_entity(&mut self, name: String) {
-        let mut rng = rand::thread_rng();
-        let random_x = rng.gen_range(10.0..1190.0);
-        let random_y = rng.gen_range(10.0..990.0);
-
-        let player_name = format!("Player {}", self.entities.len() + 1);
-        let handle = self.physics_engine.bodies.insert(
-            RigidBodyBuilder::kinematic_position_based()
-                .translation(vector![random_x, random_y])
-                .build(),
-        );
-        let collider = ColliderBuilder::cuboid(10.0, 10.0)
-            .restitution(0.0) // No bouncing
-            .build();
-        self.physics_engine.colliders.insert_with_parent(
-            collider,
-            handle,
-            &mut self.physics_engine.bodies,
-        );
-
-        self.entities.push(Entity {
-            name: player_name,
-            score: 0,
-            handle,
-        });
-    }
-
-    fn remove_entity(&mut self, name: &str) {
-        if let Some(pos) = self.entities.iter().position(|e| e.name == name) {
-            let entity = self.entities.remove(pos);
-            self.physics_engine.bodies.remove(entity.handle, &mut Default::default(), &mut Default::default(), &mut Default::default(), &mut Default::default(), false);
-        }
-    }
-
-    fn reset_simulation(&mut self) {
-        for entity in &mut self.entities {
-            entity.score = 0;
-        }
-        self.balls.clear();
-    }
-
-    fn generate_map(&mut self) {
-        let mut rng = rand::thread_rng();
-        for entity in &mut self.entities {
-            let random_x = rng.gen_range(10.0..1190.0);
-            let random_y = rng.gen_range(10.0..990.0);
-            let body = &mut self.physics_engine.bodies[entity.handle];
-            body.set_translation(vector![random_x, random_y], true);
-        }
-    }
-
     fn show_menu(&mut self, ctx: &Context) {
         TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -158,19 +72,22 @@ impl GameUI {
                     }
                 }
                 if ui.button("Reset Simulation").clicked() {
-                    self.reset_simulation();
+                    self.game_logic.reset_simulation();
                 }
                 if ui.button("Generate Map").clicked() {
-                    self.generate_map();
+                    self.game_logic.generate_map();
                 }
                 if ui.button("Show Background").clicked() {
                     self.show_background = !self.show_background;
                 }
                 if ui.button("Add Entity").clicked() {
-                    self.add_entity("Player".to_string());
+                    self.game_logic.add_entity("Player".to_string());
                 }
                 if ui.button("Remove Entity").clicked() {
-                    self.remove_entity("Player");
+                    self.game_logic.remove_entity("Player");
+                }
+                if ui.button("Add AI").clicked() { // New AI button
+                    self.game_logic.add_ai("AI Bot".to_string());
                 }
             });
         });
@@ -179,29 +96,8 @@ impl GameUI {
 
 impl Default for GameUI {
     fn default() -> Self {
-        let mut physics_engine = PhysicsEngine::default();
-
-        // Create world boundaries
-        let ground_handle = physics_engine.bodies.insert(RigidBodyBuilder::fixed().translation(vector![600.0, 0.0]).build());
-        let ground_collider = ColliderBuilder::cuboid(600.0, 10.0).build();
-        physics_engine.colliders.insert_with_parent(ground_collider, ground_handle, &mut physics_engine.bodies);
-
-        let ceiling_handle = physics_engine.bodies.insert(RigidBodyBuilder::fixed().translation(vector![600.0, 1000.0]).build());
-        let ceiling_collider = ColliderBuilder::cuboid(600.0, 10.0).build();
-        physics_engine.colliders.insert_with_parent(ceiling_collider, ceiling_handle, &mut physics_engine.bodies);
-
-        let left_wall_handle = physics_engine.bodies.insert(RigidBodyBuilder::fixed().translation(vector![0.0, 500.0]).build());
-        let left_wall_collider = ColliderBuilder::cuboid(10.0, 500.0).build();
-        physics_engine.colliders.insert_with_parent(left_wall_collider, left_wall_handle, &mut physics_engine.bodies);
-
-        let right_wall_handle = physics_engine.bodies.insert(RigidBodyBuilder::fixed().translation(vector![1200.0, 500.0]).build());
-        let right_wall_collider = ColliderBuilder::cuboid(10.0, 500.0).build();
-        physics_engine.colliders.insert_with_parent(right_wall_collider, right_wall_handle, &mut physics_engine.bodies);
-
         Self {
-            physics_engine,
-            balls: Vec::new(),
-            entities: Vec::new(),
+            game_logic: GameLogic::new(),
             line_thickness: 4.0,
             show_names: true,
             show_background: true,
@@ -216,28 +112,20 @@ impl eframe::App for GameUI {
 
         // Shoot balls every 500ms
         if self.last_shot.elapsed() > Duration::from_millis(500) {
-            if let Some(entity) = self.entities.first() {
-                self.shoot_ball(entity.handle);
+            if let Some(entity) = self.game_logic.entities.first() {
+                self.game_logic.shoot_ball(entity.handle, self.line_thickness);
             }
             self.last_shot = Instant::now();
         }
 
-        // Update the physics
-        self.physics_engine.step();
+        // Update AI movement every 100ms
+        if self.last_shot.elapsed() > Duration::from_millis(100) {
+            self.game_logic.update_ai();
+            self.last_shot = Instant::now(); // Reset the timer after updating AI
+        }
 
-        // // Check for ball collisions and remove collided balls
-        // let mut collision_events = vec![];
-        // self.physics_engine.events.collect(&mut collision_events);
-        //
-        // for event in collision_events {
-        //     if let CollisionEvent::Started(collider1, collider2, _) = event {
-        //         if let Some(ball_index) = self.balls.iter().position(|ball| {
-        //             ball.handle == self.physics_engine.colliders[collider1].parent() || ball.handle == self.physics_engine.colliders[collider2].parent()
-        //         }) {
-        //             self.balls.remove(ball_index);
-        //         }
-        //     }
-        // }
+        // Update the physics
+        self.game_logic.step();
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::SidePanel::left("entity_list").show_inside(ui, |ui| {
@@ -255,7 +143,7 @@ impl eframe::App for GameUI {
                     .body(|mut body| {
                         let padding = 10.0;
 
-                        for (index, entity) in self.entities.iter().enumerate() {
+                        for (index, entity) in self.game_logic.entities.iter().enumerate() {
                             body.row(30.0, |mut row| {
                                 let bg_color = if index % 2 == 0 {
                                     egui::Color32::from_gray(20)
@@ -312,19 +200,19 @@ impl eframe::App for GameUI {
                         }
 
                         let plot_points = Points::new(
-                            self.balls
+                            self.game_logic.bullets
                                 .iter()
-                                .map(|ball| {
-                                    let pos = self.physics_engine.bodies[ball.handle].translation();
+                                .map(|bullet| {
+                                    let pos = self.game_logic.physics_engine.bodies[bullet.handle].translation();
                                     [pos.x as f64, pos.y as f64]
                                 })
                                 .collect::<Vec<_>>(),
                         )
-                            .radius(self.line_thickness / 2.0)  // Adjust radius based on line_thickness
-                            .name("Balls");
+                            .radius(self.line_thickness / 2.0)
+                            .name("Bullets");
                         plot_ui.points(plot_points);
 
-                        self.display_entities(plot_ui); // Display entities
+                        self.display_entities(plot_ui);
 
                         let world_boundary = Line::new(PlotPoints::new(vec![
                             [0.0, 0.0],
