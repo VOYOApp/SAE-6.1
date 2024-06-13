@@ -16,15 +16,16 @@ mod bullet;
 mod game_logic;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+
     // Shared state for messages
     let messages = Arc::new(Mutex::new(Vec::new()));
 
-    // Clone the Arc to move into the server thread
+    // Clone the Arcs to move into the server thread
     let server_messages = Arc::clone(&messages);
 
     // Start the server in a separate thread
     thread::spawn(move || {
-        let serv = ServerThread::new(6969, server_messages); 
+        let serv = ServerThread::new(6969, server_messages);
         serv.start();
     });
 
