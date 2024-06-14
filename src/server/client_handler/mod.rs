@@ -1,6 +1,6 @@
 use crate::app_defines::AppDefines;
 use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::net::TcpStream;
+use std::net::{Shutdown, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -134,15 +134,57 @@ impl ClientHandler {
             println!("Failed to flush response: {}", e);
         }
     }
-
     fn handle_disconnection(&mut self) {
         add_message(
             &self.messages,
-            format!("[INFO] Client disconnected: {:?}", self.socket.peer_addr()),
+            format!("[INFO] Client disconnected: {:?}", Result::unwrap(self.socket.peer_addr())),
             MessageType::Info,
         );
-        self.socket.shutdown(std::net::Shutdown::Both);
+        self.socket.shutdown(Shutdown::Both).expect("Failed to shutdown socket");
     }
+    // fn handle_disconnection(&mut self) {
+    //     println!("Client disconnected: {:?}", self.socket.peer_addr());
+    //     match self.socket.peer_addr() {
+    //         Ok(addr) => {
+    //             add_message(
+    //                 &self.messages,
+    //                 format!("[INFO] Client disconnected: {:?}", addr),
+    //                 MessageType::Info,
+    //             );
+    //             return;
+    //         }
+    //         Err(e) => {
+    //             add_message(
+    //                 &self.messages,
+    //                 format!("[ERROR] Failed to get peer address: {:?}", e),
+    //                 MessageType::Error,
+    //             );
+    //         }
+    //     }
+    //
+    //     match self.socket.shutdown(Shutdown::Both) {
+    //         Ok(_) => {
+    //             add_message(
+    //                 &self.messages,
+    //                 "[INFO] Socket shutdown successfully".to_string(),
+    //                 MessageType::Info,
+    //             );
+    //         }
+    //         Err(e) => {
+    //             add_message(
+    //                 &self.messages,
+    //                 format!("[ERROR] Failed to shutdown socket: {:?}", e),
+    //                 MessageType::Error,
+    //             );
+    //         }
+    //     }
+    //     // add_message(
+    //     //     &self.messages,
+    //     //     format!("[INFO] Client disconnected: {:?}", self.socket.peer_addr()),
+    //     //     MessageType::Info,
+    //     // );
+    //     // self.socket.shutdown(std::net::Shutdown::Both).expect("Failed to shutdown socket");
+    // }
 
     pub fn add_to_reponse(mut reponse: String, message: String) {
         if reponse != "" {

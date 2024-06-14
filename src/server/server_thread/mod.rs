@@ -24,7 +24,7 @@ pub(crate) struct ServerSettings {
 
 impl ServerSettings {
     pub fn new() -> Self {
-        Self {
+        ServerSettings {
             arena_width: AppDefines::ARENA_WIDTH,
             arena_height: AppDefines::ARENA_HEIGHT,
             obstacle_probability: AppDefines::OBSTACLE_PROBABILITY,
@@ -40,14 +40,16 @@ impl ServerSettings {
 }
 
 pub(crate) struct ServerThread {
+    pub(crate) address: String,
     pub(crate) port: u16,
     pub(crate) messages: Arc<Mutex<Vec<StyledMessage>>>,
     pub(crate) settings: Arc<Mutex<ServerSettings>>,
 }
 
 impl ServerThread {
-    pub fn new(port: u16, messages: Arc<Mutex<Vec<StyledMessage>>>, settings: Arc<Mutex<ServerSettings>>) -> Self {
+    pub fn new(address: String, port: u16, messages: Arc<Mutex<Vec<StyledMessage>>>, settings: Arc<Mutex<ServerSettings>>) -> Self {
         ServerThread {
+            address,
             port,
             messages,
             settings,
@@ -55,7 +57,7 @@ impl ServerThread {
     }
 
     pub(crate) fn start(&self) {
-        let listener = TcpListener::bind(("127.0.0.1", self.port)).expect("Could not bind to port");
+        let listener = TcpListener::bind((self.address.to_string(), self.port)).expect("Could not bind to port");
 
         add_message(
             &self.messages,
