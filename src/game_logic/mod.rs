@@ -15,23 +15,8 @@ pub struct GameLogic {
 impl GameLogic {
     pub fn new() -> Self {
         let mut physics_engine = PhysicsEngine::default();
+        physics_engine.setup_boundaries();
 
-        // Create world boundaries
-        let ground_handle = physics_engine.bodies.insert(RigidBodyBuilder::fixed().translation(vector![600.0, 0.0]).build());
-        let ground_collider = ColliderBuilder::cuboid(600.0, 10.0).build();
-        physics_engine.colliders.insert_with_parent(ground_collider, ground_handle, &mut physics_engine.bodies);
-
-        let ceiling_handle = physics_engine.bodies.insert(RigidBodyBuilder::fixed().translation(vector![600.0, 1000.0]).build());
-        let ceiling_collider = ColliderBuilder::cuboid(600.0, 10.0).build();
-        physics_engine.colliders.insert_with_parent(ceiling_collider, ceiling_handle, &mut physics_engine.bodies);
-
-        let left_wall_handle = physics_engine.bodies.insert(RigidBodyBuilder::fixed().translation(vector![0.0, 500.0]).build());
-        let left_wall_collider = ColliderBuilder::cuboid(10.0, 500.0).build();
-        physics_engine.colliders.insert_with_parent(left_wall_collider, left_wall_handle, &mut physics_engine.bodies);
-
-        let right_wall_handle = physics_engine.bodies.insert(RigidBodyBuilder::fixed().translation(vector![1200.0, 500.0]).build());
-        let right_wall_collider = ColliderBuilder::cuboid(10.0, 500.0).build();
-        physics_engine.colliders.insert_with_parent(right_wall_collider, right_wall_handle, &mut physics_engine.bodies);
 
         Self {
             physics_engine,
@@ -140,7 +125,6 @@ impl GameLogic {
                     if entity.last_shot.elapsed().as_secs_f32() > rng.gen_range(1.0..3.0) {
                         entity.target_x = rng.gen_range(10.0..1190.0);
                         entity.target_y = rng.gen_range(10.0..990.0);
-                        entity.last_shot = Instant::now();
                     }
 
                     // Move towards the target position
@@ -167,12 +151,39 @@ impl GameLogic {
             );
         }
 
-        // Update entity positions
+        // Update entity positions and handle shooting
         for entity in &mut self.entities {
             if entity.is_ai {
                 let current_pos = self.physics_engine.bodies[entity.handle].translation();
                 entity.x = current_pos.x;
                 entity.y = current_pos.y;
+
+                // Randomly shoot a bullet every 500ms
+                if entity.last_shot.elapsed().as_millis() >= 500 {
+                    // Change the gun orientation randomly at each shoot
+                    let random_angle = rng.gen_range(0.0..std::f64::consts::TAU);
+                    let (sin, cos) = random_angle.sin_cos();
+                    let bullet_velocity = vector![cos * 500.0, sin * 500.0];
+
+                    let bullet_handle = self.physics_engine.bodies.insert(
+                        RigidBodyBuilder::dynamic()
+                            .translation(vector![entity.x, entity.y])
+                            // .linvel(bullet_velocity)
+                            .build(),
+                    );
+                    let bullet_collider = ColliderBuilder::ball(5.0)
+                        .restitution(0.0)
+                        .build();
+                    self.physics_engine.colliders.insert_with_parent(bullet_collider, bullet_handle, &mut self.physics_engine.bodies);
+
+                    let bullet = Bullet {
+                        handle: bullet_handle,
+                        shooter: entity.handle.clone(),
+                    };
+
+                    self.bullets.push(bullet);
+                    entity.last_shot = Instant::now();
+                }
             }
         }
     }
