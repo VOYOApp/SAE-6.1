@@ -1,5 +1,8 @@
 use rand::Rng;
 use rapier2d::prelude::*;
+use std::time::Instant;
+
+use eframe::egui;
 
 use crate::physics::physics::PhysicsEngine;
 
@@ -8,6 +11,14 @@ pub struct Entity {
     pub score: i32,
     pub handle: RigidBodyHandle,
     pub is_ai: bool,
+    pub last_shot: Instant,
+    pub x: f32,
+    pub y: f32,
+    pub self_orientation: f64,
+    pub gun_orientation: f64,
+    pub target_x: f32,
+    pub target_y: f32,
+    pub color: egui::Color32,
 }
 
 impl Entity {
@@ -34,7 +45,15 @@ impl Entity {
             name,
             score: 0,
             handle,
-            is_ai, // Initialize the AI flag
+            is_ai,
+            last_shot: Instant::now(),
+            x: random_x,
+            y: random_y,
+            self_orientation: 0.0,
+            gun_orientation: 0.0,
+            target_x: random_x,
+            target_y: random_y,
+            color: egui::Color32::GREEN,
         }
     }
 }

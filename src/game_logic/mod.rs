@@ -1,5 +1,6 @@
 use rand::Rng;
 use rapier2d::prelude::*;
+use std::time::Instant;
 
 use crate::bullet::bullet::Bullet;
 use crate::entities::entity::Entity;
@@ -44,22 +45,66 @@ impl GameLogic {
         self.entities.push(entity);
     }
 
-    pub fn remove_entity(&mut self, name: &str) {
-        if let Some(pos) = self.entities.iter().position(|e| e.name == name) {
-            let entity = self.entities.remove(pos);
-            self.physics_engine.bodies.remove(entity.handle, &mut Default::default(), &mut Default::default(), &mut Default::default(), &mut Default::default(), false);
+    pub fn shoot_ball(&mut self, shooter_index: usize) {
+        if shooter_index >= self.entities.len() {
+            return;
         }
-    }
 
-    pub fn shoot_ball(&mut self, entity_handle: RigidBodyHandle, line_thickness: f32) {
-        if let Some(entity) = self.entities.iter().find(|e| e.handle == entity_handle) {
-            let bullet = Bullet::new(entity.handle, &mut self.physics_engine, line_thickness);
-            self.bullets.push(bullet);
+        let shooter = &self.entities[shooter_index];
+        if shooter.last_shot.elapsed().as_secs_f64() < 1.0 {
+            return;
         }
+
+        let bullet_speed = 500.0;
+        let bullet_direction = shooter.gun_orientation;
+        let (sin, cos) = bullet_direction.sin_cos();
+        let bullet_velocity = vector![bullet_speed * cos, bullet_speed * sin];
+
+        let bullet_handle = self.physics_engine.bodies.insert(
+            RigidBodyBuilder::dynamic()
+                .translation(vector![shooter.x, shooter.y])
+                // .linvel(bullet_velocity)
+                .build(),
+        );
+        let bullet_collider = ColliderBuilder::ball(5.0)
+            .restitution(0.0)
+            .build();
+        self.physics_engine.colliders.insert_with_parent(bullet_collider, bullet_handle, &mut self.physics_engine.bodies);
+
+        let bullet = Bullet {
+            handle: bullet_handle,
+            shooter: shooter.handle.clone(),
+        };
+
+        self.bullets.push(bullet);
+        self.entities[shooter_index].last_shot = Instant::now();
     }
 
     pub fn step(&mut self) {
         self.physics_engine.step();
+
+        // Handle bullet collision with entities
+        let mut bullet_indices_to_remove = Vec::new();
+        for (bullet_index, bullet) in self.bullets.iter().enumerate() {
+            let bullet_pos = self.physics_engine.bodies[bullet.handle].translation();
+
+            for entity in &mut self.entities {
+                if bullet.shooter != entity.handle {
+                    let entity_pos = vector![entity.x, entity.y];
+                    let distance = (bullet_pos - entity_pos).norm();
+                    if distance < 15.0 {
+                        entity.score += 1;
+                        bullet_indices_to_remove.push(bullet_index);
+                        break;
+                    }
+                }
+            }
+        }
+
+        bullet_indices_to_remove.sort_unstable_by(|a, b| b.cmp(a));
+        for &index in &bullet_indices_to_remove {
+            self.bullets.remove(index);
+        }
     }
 
     pub fn reset_simulation(&mut self) {
@@ -80,34 +125,54 @@ impl GameLogic {
     }
 
     pub fn add_ai(&mut self, name: String) {
-        let ai_entity = Entity::new(name, &mut self.physics_engine, true);
-        self.entities.push(ai_entity);
+        let entity = Entity::new(name, &mut self.physics_engine, true);
+        self.entities.push(entity);
     }
 
     pub fn update_ai(&mut self) {
         let mut rng = rand::thread_rng();
 
+        // Gather data first
+        let updates: Vec<(RigidBodyHandle, Vector<f32>, Vector<f32>)> = self.entities.iter_mut()
+            .filter_map(|entity| {
+                if entity.is_ai {
+                    // Randomly change the target position every few seconds
+                    if entity.last_shot.elapsed().as_secs_f32() > rng.gen_range(1.0..3.0) {
+                        entity.target_x = rng.gen_range(10.0..1190.0);
+                        entity.target_y = rng.gen_range(10.0..990.0);
+                        entity.last_shot = Instant::now();
+                    }
+
+                    // Move towards the target position
+                    let current_pos = self.physics_engine.bodies[entity.handle].translation().clone();
+                    let target_pos = vector![entity.target_x as f32, entity.target_y as f32];
+                    let direction = target_pos - current_pos;
+                    let distance = direction.norm();
+
+                    if distance > 1.0 {
+                        let movement = direction.normalize() * 1.0; // adjust the speed here
+                        return Some((entity.handle, current_pos, movement));
+                    }
+                }
+                None
+            }).collect();
+
+        // Apply updates
+        for (handle, current_pos, movement) in updates {
+            self.physics_engine.bodies[handle].set_next_kinematic_position(
+                Isometry::translation(
+                    current_pos.x + movement.x,
+                    current_pos.y + movement.y,
+                ),
+            );
+        }
+
+        // Update entity positions
         for entity in &mut self.entities {
             if entity.is_ai {
-                // Generate a new random target position
-                let target_x = rng.gen_range(10.0..1190.0);
-                let target_y = rng.gen_range(10.0..990.0);
-
-                // Get the current position
-                let body = &mut self.physics_engine.bodies[entity.handle];
-                let current_pos = body.translation();
-
-                // Calculate the direction vector
-                let direction = vector![
-                    target_x - current_pos.x,
-                    target_y - current_pos.y
-                ];
-                let direction = direction.normalize();
-
-                // Set a velocity towards the target position
-                let speed = 100.0; // You can adjust the speed as needed
-                let velocity = direction * speed;
-                body.set_linvel(velocity, true);
+                let current_pos = self.physics_engine.bodies[entity.handle].translation();
+                entity.x = current_pos.x;
+                entity.y = current_pos.y;
             }
         }
     }

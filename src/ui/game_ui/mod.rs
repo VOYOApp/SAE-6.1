@@ -13,7 +13,6 @@ pub struct GameUI {
     line_thickness: f32,
     show_names: bool,
     show_background: bool,
-    last_shot: Instant,
 }
 
 impl GameUI {
@@ -83,9 +82,9 @@ impl GameUI {
                 if ui.button("Add Entity").clicked() {
                     self.game_logic.add_entity("Player".to_string());
                 }
-                if ui.button("Remove Entity").clicked() {
-                    self.game_logic.remove_entity("Player");
-                }
+                // if ui.button("Remove Entity").clicked() {
+                //     self.game_logic.remove_entity("Player");
+                // }
                 if ui.button("Add AI").clicked() { // New AI button
                     self.game_logic.add_ai("AI Bot".to_string());
                 }
@@ -101,7 +100,6 @@ impl Default for GameUI {
             line_thickness: 4.0,
             show_names: true,
             show_background: true,
-            last_shot: Instant::now(),
         }
     }
 }
@@ -110,19 +108,8 @@ impl eframe::App for GameUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.show_menu(ctx);
 
-        // Shoot balls every 500ms
-        if self.last_shot.elapsed() > Duration::from_millis(500) {
-            if let Some(entity) = self.game_logic.entities.first() {
-                self.game_logic.shoot_ball(entity.handle, self.line_thickness);
-            }
-            self.last_shot = Instant::now();
-        }
-
-        // Update AI movement every 100ms
-        if self.last_shot.elapsed() > Duration::from_millis(100) {
-            self.game_logic.update_ai();
-            self.last_shot = Instant::now(); // Reset the timer after updating AI
-        }
+        // Update AI movement
+        self.game_logic.update_ai();
 
         // Update the physics
         self.game_logic.step();
