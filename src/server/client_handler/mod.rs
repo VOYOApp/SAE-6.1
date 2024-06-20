@@ -101,4 +101,29 @@ impl ClientHandler {
             return reponse += &*message;
         }
     }
+
+    // pub fn make_name_list(){
+    // }
+
+    // pub fn leave_game() -> bool {
+    //     // CONNECTION_COUNT -= 1;
+    //     // TODO ESSAYE D'ENLEVER UN BOT SUR LA MAP
+    //     return true;
+    // }
+
+    // pub fn join_game() -> bool {
+    //     // CONNECTION_COUNT += 1;
+    //     // TODO ESSAYE D'AJOUTET UN BOT SUR LA MAP
+    //     return true;
+    // }
+
+    // pub fn setBot(bot){
+    // }
+
+    // pub fn make_default_name() -> String {
+    //     return "Player ".to_string() + &*CONNECTION_COUNT.to_string();
+    // }
+
+    // pub fn is_offline() -> bool {
+    // }
 }
