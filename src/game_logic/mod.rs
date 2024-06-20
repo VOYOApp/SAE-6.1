@@ -12,7 +12,7 @@ pub struct GameLogic {
     pub physics_engine: PhysicsEngine,
     pub entities: Vec<Entity>,
     pub bullets: Vec<Bullet>,
-    pub obstacles: Vec<Obstacle>, // Add this line
+    pub obstacles: Vec<Obstacle>,
 }
 
 impl GameLogic {
@@ -20,12 +20,11 @@ impl GameLogic {
         let mut physics_engine = PhysicsEngine::default();
         physics_engine.setup_boundaries();
 
-
         Self {
             physics_engine,
             entities: Vec::new(),
             bullets: Vec::new(),
-            obstacles: Vec::new(), // Initialize the obstacles vector
+            obstacles: Vec::new(),
         }
     }
 
@@ -33,7 +32,7 @@ impl GameLogic {
         let mut rng = rand::thread_rng();
         self.obstacles.clear();
 
-        for _ in 0..50 {
+        for _ in 0..25 {
             let random_x = rng.gen_range(10.0..1190.0) as f64;
             let random_y = rng.gen_range(10.0..990.0) as f64;
 
@@ -45,7 +44,6 @@ impl GameLogic {
             self.obstacles.push(Obstacle::new((random_x, random_y), collider_handle));
         }
     }
-
 
     pub fn add_entity(&mut self, name: String) {
         let entity = Entity::new(name, &mut self.physics_engine, false);
@@ -63,17 +61,18 @@ impl GameLogic {
         }
 
         let bullet_speed = 500.0;
-        let bullet_direction = shooter.gun_orientation;
+        let bullet_direction = self.physics_engine.bodies[shooter.handle].rotation().angle();
         let (sin, cos) = bullet_direction.sin_cos();
         let bullet_velocity = vector![bullet_speed * cos, bullet_speed * sin];
 
         let bullet_handle = self.physics_engine.bodies.insert(
             RigidBodyBuilder::dynamic()
-                .translation(vector![shooter.x, shooter.y])
+                .translation(*self.physics_engine.bodies[shooter.handle].translation())
+                .linvel(bullet_velocity)
                 .build(),
         );
         let bullet_collider = ColliderBuilder::ball(5.0)
-            .restitution(0.0)
+            .restitution(1.0)
             .build();
         self.physics_engine.colliders.insert_with_parent(bullet_collider, bullet_handle, &mut self.physics_engine.bodies);
 
@@ -131,7 +130,7 @@ impl GameLogic {
             entity.score = 0;
         }
 
-        // delete all bullets
+        // Delete all bullets
         for bullet in &self.bullets {
             self.physics_engine.bodies.remove(
                 bullet.handle,
@@ -142,6 +141,7 @@ impl GameLogic {
                 true,
             );
         }
+        self.bullets.clear();
     }
 
     pub fn generate_map(&mut self) {
@@ -172,6 +172,10 @@ impl GameLogic {
                     if entity.last_shot.elapsed().as_secs_f32() > rng.gen_range(1.0..3.0) {
                         entity.target_x = rng.gen_range(10.0..1190.0);
                         entity.target_y = rng.gen_range(10.0..990.0);
+                        entity.last_shot = Instant::now();
+
+                        // Change the gun orientation randomly at each target change
+                        entity.gun_orientation = rng.gen_range(0.0..std::f64::consts::TAU);
                     }
 
                     // Move towards the target position
@@ -202,24 +206,25 @@ impl GameLogic {
         for entity in &mut self.entities {
             if entity.is_ai {
                 let current_pos = self.physics_engine.bodies[entity.handle].translation();
-                entity.x = current_pos.x;
-                entity.y = current_pos.y;
+                let target_pos = vector![entity.target_x, entity.target_y];
+                let direction = target_pos - current_pos;
+                entity.self_orientation = direction.y.atan2(direction.x) as f64;
+
 
                 // Randomly shoot a bullet every 500ms
                 if entity.last_shot.elapsed().as_millis() >= 500 {
                     // Change the gun orientation randomly at each shoot
                     let random_angle = rng.gen_range(0.0..std::f64::consts::TAU);
                     let (sin, cos) = random_angle.sin_cos();
-                    let bullet_velocity = vector![cos * 500.0, sin * 500.0];
 
                     let bullet_handle = self.physics_engine.bodies.insert(
                         RigidBodyBuilder::dynamic()
-                            .translation(vector![entity.x, entity.y])
-                            // .linvel(bullet_velocity)
+                            .translation(*current_pos)
+                            .linvel(vector![cos as f32 * 500.0, sin as f32 * 500.0])
                             .build(),
                     );
                     let bullet_collider = ColliderBuilder::ball(5.0)
-                        .restitution(0.0)
+                        .restitution(1.0)
                         .build();
                     self.physics_engine.colliders.insert_with_parent(bullet_collider, bullet_handle, &mut self.physics_engine.bodies);
 
