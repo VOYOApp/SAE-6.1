@@ -28,6 +28,7 @@ impl GameLogic {
         }
     }
 
+
     fn generate_obstacles(&mut self) {
         let mut rng = rand::thread_rng();
         self.obstacles.clear();
@@ -75,7 +76,6 @@ impl GameLogic {
         self.physics_engine.step();
         self.remove_out_of_bounds_bullets();
 
-        // Handle bullet collision with entities
         let mut bullet_indices_to_remove = Vec::new();
 
         for event in &self.physics_engine.collision_events {
@@ -97,6 +97,7 @@ impl GameLogic {
             }
         }
 
+        // Remove bullets based on collected indices
         bullet_indices_to_remove.sort_unstable_by(|a, b| b.cmp(a));
         for &index in &bullet_indices_to_remove {
             let bullet = &self.bullets[index];
@@ -112,9 +113,10 @@ impl GameLogic {
         }
     }
 
+
     // Add method to handle out-of-bounds bullets
     pub fn remove_out_of_bounds_bullets(&mut self) {
-        let bounds = 1200.0; // Example boundary limit
+        let bounds = 1200.0;
         let mut bullet_indices_to_remove = Vec::new();
 
         for (index, bullet) in self.bullets.iter().enumerate() {
@@ -138,6 +140,8 @@ impl GameLogic {
             self.bullets.remove(index);
         }
     }
+
+
 
     pub fn reset_simulation(&mut self) {
         for entity in &mut self.entities {

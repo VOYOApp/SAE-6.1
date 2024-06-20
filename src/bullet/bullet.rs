@@ -1,4 +1,5 @@
 use rapier2d::prelude::*;
+
 use crate::physics::physics::PhysicsEngine;
 
 pub struct Bullet {
@@ -13,20 +14,17 @@ impl Bullet {
         let angle = shooter_body.rotation().angle();
         let direction = vector![angle.cos(), angle.sin()];
 
-        let handle = physics_engine.bodies.insert(
-            RigidBodyBuilder::dynamic()
-                .translation(pos)
-                .linvel(direction * speed)
-                .build(),
-        );
+        let rigid_body = RigidBodyBuilder::dynamic()
+            .translation(pos)
+            .linvel(direction * speed)
+            .build();
         let collider = ColliderBuilder::ball(radius)
             .restitution(0.0)
             .build();
-        physics_engine.colliders.insert_with_parent(
-            collider,
-            handle,
-            &mut physics_engine.bodies,
-        );
+
+        let handle = physics_engine.bodies.insert(rigid_body);
+        physics_engine.colliders.insert_with_parent(collider, handle, &mut physics_engine.bodies);
+
 
         Self {
             handle,
