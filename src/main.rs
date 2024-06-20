@@ -17,15 +17,6 @@ pub mod types;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    //  STARTING UI AND MOVEMENTS
-    // App::new()
-    // .add_plugins(DefaultPlugins)
-    // .add_systems(Startup, (spawn_camera, spawn_player, spawn_boundaries).chain())
-    // .add_systems(Update, player_mov)
-    // .add_systems(Update, block_players_in_bound.after(player_mov))
-    // .add_systems(Update, resize_boundaries)
-    // .run();
-
     // Shared state for messages
     let messages = Arc::new(Mutex::new(Vec::new()));
     let settings = Arc::new(Mutex::new(ServerSettings::new()));
