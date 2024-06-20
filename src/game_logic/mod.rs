@@ -60,26 +60,12 @@ impl GameLogic {
             return;
         }
 
-        let bullet_speed = 500.0;
-        let bullet_direction = self.physics_engine.bodies[shooter.handle].rotation().angle();
-        let (sin, cos) = bullet_direction.sin_cos();
-        let bullet_velocity = vector![bullet_speed * cos, bullet_speed * sin];
-
-        let bullet_handle = self.physics_engine.bodies.insert(
-            RigidBodyBuilder::dynamic()
-                .translation(*self.physics_engine.bodies[shooter.handle].translation())
-                .linvel(bullet_velocity)
-                .build(),
+        let bullet = Bullet::new(
+            shooter.handle,
+            &mut self.physics_engine,
+            500.0,  // speed
+            5.0     // radius
         );
-        let bullet_collider = ColliderBuilder::ball(5.0)
-            .restitution(1.0)
-            .build();
-        self.physics_engine.colliders.insert_with_parent(bullet_collider, bullet_handle, &mut self.physics_engine.bodies);
-
-        let bullet = Bullet {
-            handle: bullet_handle,
-            shooter: shooter.handle.clone(),
-        };
 
         self.bullets.push(bullet);
         self.entities[shooter_index].last_shot = Instant::now();
@@ -87,6 +73,7 @@ impl GameLogic {
 
     pub fn step(&mut self) {
         self.physics_engine.step();
+        self.remove_out_of_bounds_bullets();
 
         // Handle bullet collision with entities
         let mut bullet_indices_to_remove = Vec::new();
@@ -107,6 +94,33 @@ impl GameLogic {
                     }
                 }
                 _ => {}
+            }
+        }
+
+        bullet_indices_to_remove.sort_unstable_by(|a, b| b.cmp(a));
+        for &index in &bullet_indices_to_remove {
+            let bullet = &self.bullets[index];
+            self.physics_engine.bodies.remove(
+                bullet.handle,
+                &mut self.physics_engine.islands,
+                &mut self.physics_engine.colliders,
+                &mut self.physics_engine.impulse_joints,
+                &mut self.physics_engine.multibody_joints,
+                true,
+            );
+            self.bullets.remove(index);
+        }
+    }
+
+    // Add method to handle out-of-bounds bullets
+    pub fn remove_out_of_bounds_bullets(&mut self) {
+        let bounds = 1200.0; // Example boundary limit
+        let mut bullet_indices_to_remove = Vec::new();
+
+        for (index, bullet) in self.bullets.iter().enumerate() {
+            let position = self.physics_engine.bodies[bullet.handle].translation();
+            if position.x < 0.0 || position.x > bounds || position.y < 0.0 || position.y > bounds {
+                bullet_indices_to_remove.push(index);
             }
         }
 
