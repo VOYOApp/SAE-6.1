@@ -14,6 +14,7 @@ mod physics;
 mod entities;
 mod bullet;
 mod game_logic;
+mod obstacles;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Shared state for messages

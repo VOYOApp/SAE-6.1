@@ -1,15 +1,18 @@
+use std::time::Instant;
+
 use rand::Rng;
 use rapier2d::prelude::*;
-use std::time::Instant;
 
 use crate::bullet::bullet::Bullet;
 use crate::entities::entity::Entity;
+use crate::obstacles::Obstacle;
 use crate::physics::physics::PhysicsEngine;
 
 pub struct GameLogic {
     pub physics_engine: PhysicsEngine,
     pub entities: Vec<Entity>,
     pub bullets: Vec<Bullet>,
+    pub obstacles: Vec<Obstacle>, // Add this line
 }
 
 impl GameLogic {
@@ -22,8 +25,27 @@ impl GameLogic {
             physics_engine,
             entities: Vec::new(),
             bullets: Vec::new(),
+            obstacles: Vec::new(), // Initialize the obstacles vector
         }
     }
+
+    fn generate_obstacles(&mut self) {
+        let mut rng = rand::thread_rng();
+        self.obstacles.clear();
+
+        for _ in 0..50 {
+            let random_x = rng.gen_range(10.0..1190.0) as f64;
+            let random_y = rng.gen_range(10.0..990.0) as f64;
+
+            let collider = ColliderBuilder::cuboid(10.0, 10.0)
+                .translation(vector![random_x as f32, random_y as f32])
+                .build();
+            let collider_handle = self.physics_engine.colliders.insert(collider);
+
+            self.obstacles.push(Obstacle::new((random_x, random_y), collider_handle));
+        }
+    }
+
 
     pub fn add_entity(&mut self, name: String) {
         let entity = Entity::new(name, &mut self.physics_engine, false);
@@ -48,7 +70,6 @@ impl GameLogic {
         let bullet_handle = self.physics_engine.bodies.insert(
             RigidBodyBuilder::dynamic()
                 .translation(vector![shooter.x, shooter.y])
-                // .linvel(bullet_velocity)
                 .build(),
         );
         let bullet_collider = ColliderBuilder::ball(5.0)
@@ -70,24 +91,37 @@ impl GameLogic {
 
         // Handle bullet collision with entities
         let mut bullet_indices_to_remove = Vec::new();
-        for (bullet_index, bullet) in self.bullets.iter().enumerate() {
-            let bullet_pos = self.physics_engine.bodies[bullet.handle].translation();
 
-            for entity in &mut self.entities {
-                if bullet.shooter != entity.handle {
-                    let entity_pos = vector![entity.x, entity.y];
-                    let distance = (bullet_pos - entity_pos).norm();
-                    if distance < 15.0 {
-                        entity.score += 1;
-                        bullet_indices_to_remove.push(bullet_index);
-                        break;
+        for event in &self.physics_engine.collision_events {
+            match event {
+                CollisionEvent::Started(collider1, collider2, _) => {
+                    let body1 = self.physics_engine.colliders[*collider1].parent();
+                    let body2 = self.physics_engine.colliders[*collider2].parent();
+
+                    if let (Some(body1), Some(body2)) = (body1, body2) {
+                        for (bullet_index, bullet) in self.bullets.iter().enumerate() {
+                            if bullet.handle == body1 || bullet.handle == body2 {
+                                bullet_indices_to_remove.push(bullet_index);
+                                break;
+                            }
+                        }
                     }
                 }
+                _ => {}
             }
         }
 
         bullet_indices_to_remove.sort_unstable_by(|a, b| b.cmp(a));
         for &index in &bullet_indices_to_remove {
+            let bullet = &self.bullets[index];
+            self.physics_engine.bodies.remove(
+                bullet.handle,
+                &mut self.physics_engine.islands,
+                &mut self.physics_engine.colliders,
+                &mut self.physics_engine.impulse_joints,
+                &mut self.physics_engine.multibody_joints,
+                true,
+            );
             self.bullets.remove(index);
         }
     }
@@ -96,7 +130,18 @@ impl GameLogic {
         for entity in &mut self.entities {
             entity.score = 0;
         }
-        self.bullets.clear();
+
+        // delete all bullets
+        for bullet in &self.bullets {
+            self.physics_engine.bodies.remove(
+                bullet.handle,
+                &mut self.physics_engine.islands,
+                &mut self.physics_engine.colliders,
+                &mut self.physics_engine.impulse_joints,
+                &mut self.physics_engine.multibody_joints,
+                true,
+            );
+        }
     }
 
     pub fn generate_map(&mut self) {
@@ -107,6 +152,8 @@ impl GameLogic {
             let body = &mut self.physics_engine.bodies[entity.handle];
             body.set_translation(vector![random_x, random_y], true);
         }
+
+        self.generate_obstacles();
     }
 
     pub fn add_ai(&mut self, name: String) {

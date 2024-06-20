@@ -1,7 +1,9 @@
-use rapier2d::prelude::*;
 use std::time::{Duration, Instant};
-use crate::app_defines::AppDefines;
 
+// physics/mod.rs
+use rapier2d::prelude::*;
+
+use crate::app_defines::AppDefines;
 
 pub struct PhysicsEngine {
     pub physics_pipeline: PhysicsPipeline,
@@ -38,13 +40,14 @@ impl Default for PhysicsEngine {
             query_pipeline: QueryPipeline::new(),
             start_time: Instant::now(),
             loop_duration: Duration::new(5, 0),
-            collision_events: Vec::new(), // Initialize collision events
+            collision_events: Vec::new(),
         }
     }
 }
 
 impl PhysicsEngine {
     pub fn step(&mut self) {
+        self.collision_events.clear(); // Clear previous collision events
         let mut collision_event_handler = |event: &CollisionEvent| {
             self.collision_events.push(event.clone());
         };
@@ -63,7 +66,6 @@ impl PhysicsEngine {
             Some(&mut self.query_pipeline),
             &(),
             &(),
-            // &mut collision_event_handler,
         );
     }
 
@@ -87,4 +89,10 @@ impl PhysicsEngine {
         self.colliders.insert(left_boundary);
         self.colliders.insert(right_boundary);
     }
+
+    pub fn setup_physics(&mut self) {
+        self.setup_boundaries();
+    }
+
+
 }

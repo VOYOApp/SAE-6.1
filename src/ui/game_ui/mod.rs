@@ -1,6 +1,3 @@
-use std::time::Duration;
-use std::time::Instant;
-
 use eframe::egui;
 use egui::{Align2, Context, TopBottomPanel};
 use egui_extras::*;
@@ -16,6 +13,27 @@ pub struct GameUI {
 }
 
 impl GameUI {
+    fn draw_obstacles(&self, plot_ui: &mut PlotUi) {
+        for obstacle in &self.game_logic.obstacles {
+            let position = obstacle.position;
+            let line_thickness = self.line_thickness / 2.0;
+
+            let diamond_points = vec![
+                [position.0, position.1 - 10.0],
+                [position.0 - 10.0, position.1],
+                [position.0, position.1 + 10.0],
+                [position.0 + 10.0, position.1],
+                [position.0, position.1 - 10.0], // close the diamond shape
+            ];
+
+            plot_ui.line(
+                Line::new(PlotPoints::new(diamond_points))
+                    .color(egui::Color32::GREEN)
+                    .width(line_thickness),
+            );
+        }
+    }
+
     fn display_entities(&self, plot_ui: &mut PlotUi) {
         for entity in &self.game_logic.entities {
             let body = &self.game_logic.physics_engine.bodies[entity.handle];
@@ -95,14 +113,18 @@ impl GameUI {
 
 impl Default for GameUI {
     fn default() -> Self {
+        let mut game_logic = GameLogic::new();
+        game_logic.generate_map();
+
         Self {
-            game_logic: GameLogic::new(),
+            game_logic,
             line_thickness: 4.0,
             show_names: true,
             show_background: true,
         }
     }
 }
+
 
 impl eframe::App for GameUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -200,6 +222,8 @@ impl eframe::App for GameUI {
                         plot_ui.points(plot_points);
 
                         self.display_entities(plot_ui);
+
+                        self.draw_obstacles(plot_ui);
 
                         let world_boundary = Line::new(PlotPoints::new(vec![
                             [0.0, 0.0],
