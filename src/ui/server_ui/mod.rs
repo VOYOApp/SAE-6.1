@@ -3,6 +3,7 @@ use eframe::egui;
 
 use eframe::egui::{CentralPanel, Context, RichText, TopBottomPanel, Window};
 use crate::app_defines::AppDefines;
+use crate::server::server_thread::ServerSettings;
 use crate::StyledMessage;
 
 pub struct ServerUi {
@@ -22,7 +23,7 @@ pub struct ServerUi {
 }
 
 impl ServerUi {
-    pub fn new(messages: Arc<Mutex<Vec<StyledMessage>>>) -> Self {
+    pub fn new(messages: Arc<Mutex<Vec<StyledMessage>>>, settings: Arc<Mutex<ServerSettings>>) -> Self {
         ServerUi { messages, show_about: false, show_options: false,
             arena_width: AppDefines::ARENA_WIDTH,
             arena_height: AppDefines::ARENA_HEIGHT,

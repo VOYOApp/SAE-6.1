@@ -1,7 +1,8 @@
-use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
+use std::net::TcpListener;
 use std::thread;
 use std::time::Duration;
+use egui::Key::A;
 use crate::app_defines::AppDefines;
 
 use crate::server::client_handler::ClientHandler;
@@ -42,14 +43,20 @@ pub(crate) struct ServerThread {
     pub(crate) address: String,
     pub(crate) port: u16,
     pub(crate) messages: Arc<Mutex<Vec<StyledMessage>>>,
+    pub(crate) settings: Arc<Mutex<ServerSettings>>,
 }
 
 impl ServerThread {
-    pub(crate) fn new(address: String, port: u16, messages: Arc<Mutex<Vec<StyledMessage>>>)-> Self {
-        ServerThread {address, port, messages }
+    pub fn new(address: String, port: u16, messages: Arc<Mutex<Vec<StyledMessage>>>, settings: Arc<Mutex<ServerSettings>>) -> Self {
+        ServerThread {
+            address,
+            port,
+            messages,
+            settings,
+        }
     }
 
-    pub(crate) async fn start(&self) {
+    pub(crate) fn start(&self) {
         let listener = TcpListener::bind((self.address.to_string(), self.port)).expect("Could not bind to port");
 
         add_message(
@@ -72,9 +79,10 @@ impl ServerThread {
                         MessageType::Info,
                     );
                     let messages = Arc::clone(&self.messages);
+                    let settings = Arc::clone(&self.settings);
                     stream.set_read_timeout(Some(Duration::from_millis(100))).unwrap(); // Set timeout
                     thread::spawn(move || {
-                        ClientHandler::new(stream, messages).run();
+                        ClientHandler::new(stream, messages, settings).run();
                     });
                 }
                 Err(e) => {
@@ -88,3 +96,4 @@ impl ServerThread {
         }
     }
 }
+
