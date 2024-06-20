@@ -16,6 +16,16 @@ mod bullet;
 mod game_logic;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+
+    //  STARTING UI AND MOVEMENTS
+    // App::new()
+    // .add_plugins(DefaultPlugins)
+    // .add_systems(Startup, (spawn_camera, spawn_player, spawn_boundaries).chain())
+    // .add_systems(Update, player_mov)
+    // .add_systems(Update, block_players_in_bound.after(player_mov))
+    // .add_systems(Update, resize_boundaries)
+    // .run();
+
     // Shared state for messages
     let messages = Arc::new(Mutex::new(Vec::new()));
 
@@ -24,10 +34,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start the server in a separate thread
     thread::spawn(move || {
-        let serv = ServerThread::new(6969, server_messages); 
+        let serv = ServerThread::new("127.0.0.1".to_string(),6969, server_messages);
         serv.start();
     });
 
+    // Run the GUI
     let options = eframe::NativeOptions::default();
     eframe::run_native(
         "Physics Simulation",

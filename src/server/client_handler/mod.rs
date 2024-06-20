@@ -1,5 +1,5 @@
 use std::io::{BufRead, BufReader, BufWriter};
-use std::net::TcpStream;
+use std::net::{Shutdown, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -85,12 +85,11 @@ impl ClientHandler {
     fn process_message(&mut self, received: &str) {
         println!("Default TODO PROCESS MESSAGE");
     }
-
     fn handle_disconnection(&mut self) {
         println!("Client disconnected: {:?}", self.socket.peer_addr().unwrap());
         add_message(
             &self.messages,
-            format!("[INFO] Client disconnected: {}", self.socket.peer_addr().unwrap()),
+            format!("[INFO] Client disconnected: {:?}", self.socket.peer_addr().unwrap()),
             MessageType::Info,
         );
         self.socket.shutdown(std::net::Shutdown::Both).unwrap();
