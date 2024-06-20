@@ -28,24 +28,6 @@ impl GameLogic {
         }
     }
 
-
-    fn generate_obstacles(&mut self) {
-        let mut rng = rand::thread_rng();
-        self.obstacles.clear();
-
-        for _ in 0..25 {
-            let random_x = rng.gen_range(10.0..1190.0) as f64;
-            let random_y = rng.gen_range(10.0..990.0) as f64;
-
-            let collider = ColliderBuilder::cuboid(10.0, 10.0)
-                .translation(vector![random_x as f32, random_y as f32])
-                .build();
-            let collider_handle = self.physics_engine.colliders.insert(collider);
-
-            self.obstacles.push(Obstacle::new((random_x, random_y), collider_handle));
-        }
-    }
-
     pub fn add_entity(&mut self, name: String) {
         let entity = Entity::new(name, &mut self.physics_engine, false);
         self.entities.push(entity);
@@ -65,7 +47,7 @@ impl GameLogic {
             shooter.handle,
             &mut self.physics_engine,
             500.0,  // speed
-            5.0     // radius
+            5.0,     // radius
         );
 
         self.bullets.push(bullet);
@@ -143,7 +125,6 @@ impl GameLogic {
     }
 
 
-
     pub fn reset_simulation(&mut self) {
         for entity in &mut self.entities {
             entity.score = 0;
@@ -161,18 +142,68 @@ impl GameLogic {
             );
         }
         self.bullets.clear();
+
+        // // Remove all obstacles
+        // self.remove_all_obstacles();
+        //
+        // // Generate new obstacles
+        // self.generate_obstacles();
+
+        // Reposition entities
+        self.reposition_entities();
     }
 
-    pub fn generate_map(&mut self) {
+    fn remove_all_obstacles(&mut self) {
+        for obstacle in &self.obstacles {
+            self.physics_engine.colliders.remove(
+                obstacle.collider_handle,
+                &mut self.physics_engine.islands,
+                &mut self.physics_engine.bodies,
+                true,
+            );
+        }
+        self.obstacles.clear();
+    }
+
+    fn generate_obstacles(&mut self) {
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..25 {
+            let random_x = rng.gen_range(10.0..1190.0) as f64;
+            let random_y = rng.gen_range(10.0..990.0) as f64;
+
+            let collider = ColliderBuilder::cuboid(10.0, 10.0)
+                .translation(vector![random_x as f32, random_y as f32])
+                .build();
+            let collider_handle = self.physics_engine.colliders.insert(collider);
+
+            self.obstacles.push(Obstacle::new((random_x, random_y), collider_handle));
+        }
+    }
+
+    fn reposition_entities(&mut self) {
         let mut rng = rand::thread_rng();
         for entity in &mut self.entities {
             let random_x = rng.gen_range(10.0..1190.0);
             let random_y = rng.gen_range(10.0..990.0);
             let body = &mut self.physics_engine.bodies[entity.handle];
             body.set_translation(vector![random_x, random_y], true);
-        }
 
+            // Update entity's internal position
+            entity.x = random_x;
+            entity.y = random_y;
+        }
+    }
+
+    pub fn generate_map(&mut self) {
+        // Remove all obstacles
+        self.remove_all_obstacles();
+
+        // Generate new obstacles
         self.generate_obstacles();
+
+        // Reposition entities
+        self.reposition_entities();
     }
 
     pub fn add_ai(&mut self, name: String) {
