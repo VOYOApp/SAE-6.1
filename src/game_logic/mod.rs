@@ -74,47 +74,57 @@ impl GameLogic {
 
     pub fn step(&mut self) {
         self.physics_engine.step();
+        self.handle_collisions();
         self.remove_out_of_bounds_bullets();
+    }
 
+    fn handle_collisions(&mut self) {
         let mut bullet_indices_to_remove = Vec::new();
 
-        for event in &self.physics_engine.collision_events {
-            match event {
-                CollisionEvent::Started(collider1, collider2, _) => {
-                    let body1 = self.physics_engine.colliders[*collider1].parent();
-                    let body2 = self.physics_engine.colliders[*collider2].parent();
+        for event in self.physics_engine.collision_events.drain(..) {
+            if let CollisionEvent::Started(collider1, collider2, _) = event {
+                let body1 = self.physics_engine.colliders[collider1].parent();
+                let body2 = self.physics_engine.colliders[collider2].parent();
 
-                    if let (Some(body1), Some(body2)) = (body1, body2) {
-                        for (bullet_index, bullet) in self.bullets.iter().enumerate() {
-                            if bullet.handle == body1 || bullet.handle == body2 {
-                                bullet_indices_to_remove.push(bullet_index);
-                                break;
+                if let (Some(body1), Some(body2)) = (body1, body2) {
+                    for (bullet_index, bullet) in self.bullets.iter().enumerate() {
+                        if bullet.handle == body1 || bullet.handle == body2 {
+                            bullet_indices_to_remove.push(bullet_index);
+
+                            // Update scores if the bullet hit an entity
+                            if let Some(entity_index) = self.entities.iter().position(|e| e.handle == body1 || e.handle == body2) {
+                                if bullet.shooter != self.entities[entity_index].handle {
+                                    let shooter_index = self.entities.iter().position(|e| e.handle == bullet.shooter).unwrap();
+                                    self.entities[shooter_index].score += 1;
+                                }
                             }
+
+                            break;
                         }
                     }
                 }
-                _ => {}
             }
         }
 
         // Remove bullets based on collected indices
         bullet_indices_to_remove.sort_unstable_by(|a, b| b.cmp(a));
         for &index in &bullet_indices_to_remove {
-            let bullet = &self.bullets[index];
-            self.physics_engine.bodies.remove(
-                bullet.handle,
-                &mut self.physics_engine.islands,
-                &mut self.physics_engine.colliders,
-                &mut self.physics_engine.impulse_joints,
-                &mut self.physics_engine.multibody_joints,
-                true,
-            );
-            self.bullets.remove(index);
+            self.remove_bullet(index);
         }
     }
 
+    fn remove_bullet(&mut self, index: usize) {
+        let bullet = self.bullets.remove(index);
+        self.physics_engine.bodies.remove(
+            bullet.handle,
+            &mut self.physics_engine.islands,
+            &mut self.physics_engine.colliders,
+            &mut self.physics_engine.impulse_joints,
+            &mut self.physics_engine.multibody_joints,
+            true,
+        );
+    }
 
-    // Add method to handle out-of-bounds bullets
     pub fn remove_out_of_bounds_bullets(&mut self) {
         let bounds = 1200.0;
         let mut bullet_indices_to_remove = Vec::new();
@@ -128,16 +138,7 @@ impl GameLogic {
 
         bullet_indices_to_remove.sort_unstable_by(|a, b| b.cmp(a));
         for &index in &bullet_indices_to_remove {
-            let bullet = &self.bullets[index];
-            self.physics_engine.bodies.remove(
-                bullet.handle,
-                &mut self.physics_engine.islands,
-                &mut self.physics_engine.colliders,
-                &mut self.physics_engine.impulse_joints,
-                &mut self.physics_engine.multibody_joints,
-                true,
-            );
-            self.bullets.remove(index);
+            self.remove_bullet(index);
         }
     }
 

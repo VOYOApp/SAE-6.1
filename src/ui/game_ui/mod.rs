@@ -100,9 +100,6 @@ impl GameUI {
                 if ui.button("Add Entity").clicked() {
                     self.game_logic.add_entity("Player".to_string());
                 }
-                // if ui.button("Remove Entity").clicked() {
-                //     self.game_logic.remove_entity("Player");
-                // }
                 if ui.button("Add AI").clicked() { // New AI button
                     self.game_logic.add_ai("AI Bot".to_string());
                 }
