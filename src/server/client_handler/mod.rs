@@ -7,16 +7,35 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::server::server_thread::ServerSettings;
 use crate::types::{add_message, MessageType, StyledMessage};
 
+/// A struct representing a client handler, responsible for communicating with a client via a TCP socket.
 pub(crate) struct ClientHandler {
+    /// The TCP socket associated with the client.
     pub(crate) socket: TcpStream,
+    /// A buffer for writing data to the socket.
     pub(crate) buf_writer: BufWriter<TcpStream>,
+    /// A buffer for reading data from the socket.
     pub(crate) buf_reader: BufReader<TcpStream>,
+    /// The time in seconds since the Unix epoch of the client's last activity.
     pub(crate) previous_time: u64,
+    /// A thread-safe, shared vector of styled messages.
     pub(crate) messages: Arc<Mutex<Vec<StyledMessage>>>,
+    /// Thread-safe, shared server settings.
     pub(crate) settings: Arc<Mutex<ServerSettings>>,
 }
 
 impl ClientHandler {
+    /// Creates a new client handler with the specified socket, messages, and server settings.
+    ///
+    /// # Arguments
+    ///
+    /// * `socket` - The client's TCP socket.
+    /// * `messages` - A thread-safe, shared vector of styled messages.
+    /// * `settings` - Thread-safe, shared server settings.
+    ///
+    /// # Returns
+    ///
+    /// A new `ClientHandler`.
+    ///
     pub fn new(socket: TcpStream, messages: Arc<Mutex<Vec<StyledMessage>>>, settings: Arc<Mutex<ServerSettings>>) -> Self {
         let buf_writer = BufWriter::new(socket.try_clone().unwrap());
         let buf_reader = BufReader::new(socket.try_clone().unwrap());
@@ -29,6 +48,8 @@ impl ClientHandler {
             settings,
         }
     }
+
+    /// Starts the client handler, reading messages from the client and processing them until disconnection or timeout.
     pub fn run(&mut self) {
         let mut received_message = String::new();
         let mut running = true;
@@ -50,6 +71,12 @@ impl ClientHandler {
         }
     }
 
+    /// Checks if the client has exceeded the inactivity timeout.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the client has exceeded the inactivity timeout, `false` otherwise.
+    ///
     fn check_timeout(&mut self) -> bool {
         let now = SystemTime::now();
         let current_time = now.duration_since(UNIX_EPOCH).unwrap().as_secs();
@@ -66,6 +93,12 @@ impl ClientHandler {
         }
     }
 
+    /// Handles a message received from the client.
+    ///
+    /// # Arguments
+    ///
+    /// * `received_message` - The received message as a string.
+    ///
     fn handle_received_message(&mut self, received_message: &str) {
         let all_messages: Vec<&str> = received_message.trim().split(AppDefines::COMMAND_SEP).collect();
         for message in all_messages {
@@ -81,6 +114,12 @@ impl ClientHandler {
         }
     }
 
+    /// Processes an individual message from the client.
+    ///
+    /// # Arguments
+    ///
+    /// * `received` - The received message as a string.
+    ///
     fn process_message(&mut self, received: &str) {
         let mut message_values = received.split(AppDefines::ARGUMENT_SEP).collect::<Vec<&str>>();
         let code_message = message_values[0];
@@ -143,35 +182,21 @@ impl ClientHandler {
         self.socket.shutdown(Shutdown::Both).expect("Failed to shutdown socket");
     }
 
+    /// Adds a message to the response string.
+    ///
+    /// # Arguments
+    ///
+    /// * `response` - The existing response string.
+    /// * `message` - The message to add to the response.
+    ///
+    /// # Returns
+    ///
+    /// The updated response string with the new message appended.
+    ///
     pub fn add_to_reponse(mut reponse: String, message: String) {
         if reponse != "" {
             reponse += AppDefines::COMMAND_SEP;
             return reponse += &*message;
         }
     }
-
-    // pub fn make_name_list(){
-    // }
-
-    // pub fn leave_game() -> bool {
-    //     // CONNECTION_COUNT -= 1;
-    //     // TODO ESSAYE D'ENLEVER UN BOT SUR LA MAP
-    //     return true;
-    // }
-
-    // pub fn join_game() -> bool {
-    //     // CONNECTION_COUNT += 1;
-    //     // TODO ESSAYE D'AJOUTET UN BOT SUR LA MAP
-    //     return true;
-    // }
-
-    // pub fn setBot(bot){
-    // }
-
-    // pub fn make_default_name() -> String {
-    //     return "Player ".to_string() + &*CONNECTION_COUNT.to_string();
-    // }
-
-    // pub fn is_offline() -> bool {
-    // }
 }

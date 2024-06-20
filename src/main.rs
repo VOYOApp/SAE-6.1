@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Physics Simulation",
         options,
         Box::new(|_cc| Box::new(GameUI::default())),
-    ).expect("TODO: panic message");
+    ).expect("Failed to run game UI");
 
     // Run the GUI in the main thread
     let native_options = eframe::NativeOptions::default();
