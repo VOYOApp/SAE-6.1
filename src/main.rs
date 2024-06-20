@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start the server in a separate thread
     thread::spawn(move || {
-        let serv = ServerThread::new(6969, server_messages);
+        let serv = ServerThread::new("127.0.0.1".to_string(),6969, server_messages);
         serv.start();
     });
 

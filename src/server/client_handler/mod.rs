@@ -89,7 +89,7 @@ impl ClientHandler {
         println!("Client disconnected: {:?}", self.socket.peer_addr().unwrap());
         add_message(
             &self.messages,
-            format!("[INFO] Client disconnected: {}", Result::unwrap(self.socket.peer_addr().unwrap())),
+            format!("[INFO] Client disconnected: {}", Result::unwrap(self.socket.peer_addr().unwrap()))),
             MessageType::Info,
         );
         self.socket.shutdown(Shutdown::Both).expect("Failed to shutdown socket");
