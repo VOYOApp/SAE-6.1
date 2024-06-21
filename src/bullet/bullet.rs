@@ -1,10 +1,12 @@
 use rapier2d::prelude::*;
+use std::time::Instant;
 
 use crate::physics::physics::PhysicsEngine;
 
 pub struct Bullet {
     pub handle: RigidBodyHandle,
     pub shooter: RigidBodyHandle,
+    pub created_at: Instant,
 }
 
 impl Bullet {
@@ -25,10 +27,10 @@ impl Bullet {
         let handle = physics_engine.bodies.insert(rigid_body);
         physics_engine.colliders.insert_with_parent(collider, handle, &mut physics_engine.bodies);
 
-
         Self {
             handle,
             shooter: shooter_handle,
+            created_at: Instant::now(),
         }
     }
 }

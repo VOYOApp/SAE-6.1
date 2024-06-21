@@ -34,7 +34,7 @@ impl GameLogic {
     }
 
     pub fn shoot_ball(&mut self, shooter_index: usize) {
-        if shooter_index >= self.entities.len() {
+        if (shooter_index >= self.entities.len()) {
             return;
         }
 
@@ -58,6 +58,7 @@ impl GameLogic {
         self.physics_engine.step();
         self.handle_collisions();
         self.remove_out_of_bounds_bullets();
+        self.remove_expired_bullets();
     }
 
     fn handle_collisions(&mut self) {
@@ -107,7 +108,7 @@ impl GameLogic {
         );
     }
 
-    pub fn remove_out_of_bounds_bullets(&mut self) {
+    fn remove_out_of_bounds_bullets(&mut self) {
         let bounds = 1200.0;
         let mut bullet_indices_to_remove = Vec::new();
 
@@ -124,6 +125,21 @@ impl GameLogic {
         }
     }
 
+    fn remove_expired_bullets(&mut self) {
+        let now = Instant::now();
+        let mut bullet_indices_to_remove = Vec::new();
+
+        for (index, bullet) in self.bullets.iter().enumerate() {
+            if now.duration_since(bullet.created_at).as_secs() >= 2 {
+                bullet_indices_to_remove.push(index);
+            }
+        }
+
+        bullet_indices_to_remove.sort_unstable_by(|a, b| b.cmp(a));
+        for &index in &bullet_indices_to_remove {
+            self.remove_bullet(index);
+        }
+    }
 
     pub fn reset_simulation(&mut self) {
         for entity in &mut self.entities {
@@ -142,12 +158,6 @@ impl GameLogic {
             );
         }
         self.bullets.clear();
-
-        // // Remove all obstacles
-        // self.remove_all_obstacles();
-        //
-        // // Generate new obstacles
-        // self.generate_obstacles();
 
         // Reposition entities
         self.reposition_entities();
@@ -260,7 +270,6 @@ impl GameLogic {
                 let direction = target_pos - current_pos;
                 entity.self_orientation = direction.y.atan2(direction.x) as f64;
 
-
                 // Randomly shoot a bullet every 500ms
                 if entity.last_shot.elapsed().as_millis() >= 500 {
                     // Change the gun orientation randomly at each shoot
@@ -281,6 +290,7 @@ impl GameLogic {
                     let bullet = Bullet {
                         handle: bullet_handle,
                         shooter: entity.handle.clone(),
+                        created_at: Instant::now(),
                     };
 
                     self.bullets.push(bullet);
