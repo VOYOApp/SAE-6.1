@@ -8,14 +8,28 @@ use crate::entities::entity::Entity;
 use crate::obstacles::Obstacle;
 use crate::physics::physics::PhysicsEngine;
 
+/// Represents the game logic and manages the state of the game.
 pub struct GameLogic {
+    /// The physics engine managing the physical simulation.
     pub physics_engine: PhysicsEngine,
+    /// A list of entities in the game.
     pub entities: Vec<Entity>,
+    /// A list of bullets currently in the game.
     pub bullets: Vec<Bullet>,
+    /// A list of obstacles in the game.
     pub obstacles: Vec<Obstacle>,
 }
 
 impl GameLogic {
+    /// Creates a new `GameLogic` instance.
+    ///
+    /// # Returns
+    /// A new instance of `GameLogic`.
+    ///
+    /// # Examples
+    /// ```
+    /// let game_logic = GameLogic::new();
+    /// ```
     pub fn new() -> Self {
         let mut physics_engine = PhysicsEngine::default();
         physics_engine.setup_boundaries();
@@ -28,13 +42,21 @@ impl GameLogic {
         }
     }
 
+    /// Adds a new entity to the game.
+    ///
+    /// # Parameters
+    /// - `name`: The name of the entity.
     pub fn add_entity(&mut self, name: String) {
         let entity = Entity::new(name, &mut self.physics_engine, false);
         self.entities.push(entity);
     }
 
+    /// Makes an entity shoot a bullet.
+    ///
+    /// # Parameters
+    /// - `shooter_index`: The index of the entity that is shooting.
     pub fn shoot_ball(&mut self, shooter_index: usize) {
-        if (shooter_index >= self.entities.len()) {
+        if shooter_index >= self.entities.len() {
             return;
         }
 
@@ -54,6 +76,7 @@ impl GameLogic {
         self.entities[shooter_index].last_shot = Instant::now();
     }
 
+    /// Advances the simulation by one step.
     pub fn step(&mut self) {
         self.physics_engine.step();
         self.handle_collisions();
@@ -61,6 +84,7 @@ impl GameLogic {
         self.remove_expired_bullets();
     }
 
+    /// Handles collisions between entities and bullets.
     fn handle_collisions(&mut self) {
         let mut bullet_indices_to_remove = Vec::new();
 
@@ -96,6 +120,10 @@ impl GameLogic {
         }
     }
 
+    /// Removes a bullet from the game.
+    ///
+    /// # Parameters
+    /// - `index`: The index of the bullet to remove.
     fn remove_bullet(&mut self, index: usize) {
         let bullet = self.bullets.remove(index);
         self.physics_engine.bodies.remove(
@@ -108,6 +136,7 @@ impl GameLogic {
         );
     }
 
+    /// Removes bullets that are out of bounds.
     fn remove_out_of_bounds_bullets(&mut self) {
         let bounds = 1200.0;
         let mut bullet_indices_to_remove = Vec::new();
@@ -125,6 +154,7 @@ impl GameLogic {
         }
     }
 
+    /// Removes bullets that have expired.
     fn remove_expired_bullets(&mut self) {
         let now = Instant::now();
         let mut bullet_indices_to_remove = Vec::new();
@@ -141,6 +171,7 @@ impl GameLogic {
         }
     }
 
+    /// Resets the simulation.
     pub fn reset_simulation(&mut self) {
         for entity in &mut self.entities {
             entity.score = 0;
@@ -163,6 +194,7 @@ impl GameLogic {
         self.reposition_entities();
     }
 
+    /// Removes all obstacles from the game.
     fn remove_all_obstacles(&mut self) {
         for obstacle in &self.obstacles {
             self.physics_engine.colliders.remove(
@@ -175,6 +207,7 @@ impl GameLogic {
         self.obstacles.clear();
     }
 
+    /// Generates obstacles in the game.
     fn generate_obstacles(&mut self) {
         let mut rng = rand::thread_rng();
 
@@ -191,6 +224,7 @@ impl GameLogic {
         }
     }
 
+    /// Repositions entities to new random locations.
     fn reposition_entities(&mut self) {
         let mut rng = rand::thread_rng();
         for entity in &mut self.entities {
@@ -205,6 +239,7 @@ impl GameLogic {
         }
     }
 
+    /// Generates a new map with obstacles and repositions entities.
     pub fn generate_map(&mut self) {
         // Remove all obstacles
         self.remove_all_obstacles();
@@ -216,11 +251,16 @@ impl GameLogic {
         self.reposition_entities();
     }
 
+    /// Adds a new AI-controlled entity to the game.
+    ///
+    /// # Parameters
+    /// - `name`: The name of the AI entity.
     pub fn add_ai(&mut self, name: String) {
         let entity = Entity::new(name, &mut self.physics_engine, true);
         self.entities.push(entity);
     }
 
+    /// Updates AI entities in the game.
     pub fn update_ai(&mut self) {
         let mut rng = rand::thread_rng();
 

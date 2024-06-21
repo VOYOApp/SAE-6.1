@@ -5,6 +5,7 @@ use egui_plot::*;
 
 use crate::game_logic::GameLogic;
 
+/// Represents the user interface for the game.
 pub struct GameUI {
     game_logic: GameLogic,
     line_thickness: f32,
@@ -13,6 +14,10 @@ pub struct GameUI {
 }
 
 impl GameUI {
+    /// Draws the obstacles on the plot.
+    ///
+    /// # Parameters
+    /// - `plot_ui`: The `PlotUi` instance where obstacles will be drawn.
     fn draw_obstacles(&self, plot_ui: &mut PlotUi) {
         for obstacle in &self.game_logic.obstacles {
             let position = obstacle.position;
@@ -34,6 +39,10 @@ impl GameUI {
         }
     }
 
+    /// Displays the entities on the plot.
+    ///
+    /// # Parameters
+    /// - `plot_ui`: The `PlotUi` instance where entities will be displayed.
     fn display_entities(&self, plot_ui: &mut PlotUi) {
         for entity in &self.game_logic.entities {
             let body = &self.game_logic.physics_engine.bodies[entity.handle];
@@ -72,6 +81,10 @@ impl GameUI {
         }
     }
 
+    /// Displays the menu bar at the top of the UI.
+    ///
+    /// # Parameters
+    /// - `ctx`: The `Context` instance for rendering the menu.
     fn show_menu(&mut self, ctx: &Context) {
         TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -109,6 +122,10 @@ impl GameUI {
 }
 
 impl Default for GameUI {
+    /// Creates a new default `GameUI` instance.
+    ///
+    /// # Returns
+    /// A new instance of `GameUI` with default settings.
     fn default() -> Self {
         let mut game_logic = GameLogic::new();
         game_logic.generate_map();
@@ -122,8 +139,12 @@ impl Default for GameUI {
     }
 }
 
-
 impl eframe::App for GameUI {
+    /// Updates the game UI.
+    ///
+    /// # Parameters
+    /// - `ctx`: The `Context` instance for rendering.
+    /// - `_frame`: The `Frame` instance for the application window.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.show_menu(ctx);
 

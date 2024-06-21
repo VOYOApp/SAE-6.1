@@ -5,6 +5,7 @@ use rapier2d::prelude::*;
 
 use crate::app_defines::AppDefines;
 
+/// Represents the physics engine and its components.
 pub struct PhysicsEngine {
     pub physics_pipeline: PhysicsPipeline,
     pub gravity: Vector<f32>,
@@ -20,10 +21,14 @@ pub struct PhysicsEngine {
     pub query_pipeline: QueryPipeline,
     pub start_time: Instant,
     pub loop_duration: Duration,
-    pub collision_events: Vec<CollisionEvent>, // Store collision events
+    pub collision_events: Vec<CollisionEvent>,
 }
 
 impl Default for PhysicsEngine {
+    /// Creates a new default `PhysicsEngine` instance.
+    ///
+    /// # Returns
+    /// A new instance of `PhysicsEngine` with default settings.
     fn default() -> Self {
         Self {
             physics_pipeline: PhysicsPipeline::new(),
@@ -46,6 +51,9 @@ impl Default for PhysicsEngine {
 }
 
 impl PhysicsEngine {
+    /// Advances the physics simulation by one step.
+    ///
+    /// Clears previous collision events and updates the physics world.
     pub fn step(&mut self) {
         self.collision_events.clear(); // Clear previous collision events
         let mut collision_event_handler = |event: &CollisionEvent| {
@@ -69,6 +77,7 @@ impl PhysicsEngine {
         );
     }
 
+    /// Sets up the boundary colliders for the simulation area.
     pub fn setup_boundaries(&mut self) {
         let half_extents = vector![AppDefines::ARENA_WIDTH / 2.0, AppDefines::ARENA_HEIGHT / 2.0];
         let top_boundary = ColliderBuilder::cuboid(half_extents.x, 1.0)
@@ -90,9 +99,8 @@ impl PhysicsEngine {
         self.colliders.insert(right_boundary);
     }
 
+    /// Sets up the physics simulation, including boundaries.
     pub fn setup_physics(&mut self) {
         self.setup_boundaries();
     }
-
-
 }
