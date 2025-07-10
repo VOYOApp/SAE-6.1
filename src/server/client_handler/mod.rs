@@ -1,9 +1,11 @@
-use crate::app_defines::AppDefines;
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::net::{Shutdown, TcpStream};
+use std::net::{Shutdown, SocketAddr, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::app_defines::AppDefines;
+use crate::game_logic::GameLogic;
 use crate::server::server_thread::ServerSettings;
 use crate::types::{add_message, MessageType, StyledMessage};
 
@@ -21,6 +23,8 @@ pub(crate) struct ClientHandler {
     pub(crate) messages: Arc<Mutex<Vec<StyledMessage>>>,
     /// Thread-safe, shared server settings.
     pub(crate) settings: Arc<Mutex<ServerSettings>>,
+    game_logic: Arc<Mutex<GameLogic>>,
+    client_entity_map: Arc<Mutex<HashMap<SocketAddr, u32>>>,
 }
 
 impl ClientHandler {
@@ -36,7 +40,12 @@ impl ClientHandler {
     ///
     /// A new `ClientHandler`.
     ///
-    pub fn new(socket: TcpStream, messages: Arc<Mutex<Vec<StyledMessage>>>, settings: Arc<Mutex<ServerSettings>>) -> Self {
+    pub fn new(socket: TcpStream,
+               messages: Arc<Mutex<Vec<StyledMessage>>>,
+               settings: Arc<Mutex<ServerSettings>>,
+               game_logic: Arc<Mutex<GameLogic>>,
+               client_entity_map: Arc<Mutex<HashMap<SocketAddr, u32>>>,
+        ) -> Self {
         let buf_writer = BufWriter::new(socket.try_clone().unwrap());
         let buf_reader = BufReader::new(socket.try_clone().unwrap());
         ClientHandler {
@@ -46,6 +55,8 @@ impl ClientHandler {
             previous_time: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
             messages,
             settings,
+            game_logic,
+            client_entity_map,
         }
     }
 
@@ -120,7 +131,7 @@ impl ClientHandler {
     ///
     /// * `received` - The received message as a string.
     ///
-    fn process_message(&mut self, received: &str) {
+   /* fn process_message(&mut self, received: &str) {
         let mut message_values = received.split(AppDefines::ARGUMENT_SEP).collect::<Vec<&str>>();
         let code_message = message_values[0];
         println!("Processing message: {:?}", received);
@@ -172,14 +183,61 @@ impl ClientHandler {
         if let Err(e) = self.buf_writer.flush() {
             println!("Failed to flush response: {}", e);
         }
+    }*/
+
+    fn process_message(&mut self, received: &str) {
+        let peer_addr = self.socket.peer_addr().unwrap();
+        let entity_id = {
+            let map = self.client_entity_map.lock().unwrap();
+            *map.get(&peer_addr).unwrap_or(&0)
+        };
+
+        let mut message_values = received.split(AppDefines::ARGUMENT_SEP).collect::<Vec<&str>>();
+        let code_message = message_values[0];
+
+        let response = match code_message {
+            AppDefines::SET_NAME => {
+                if let Some(name) = message_values.get(1) {
+                    let mut logic = self.game_logic.lock().unwrap();
+                    if let Some(entity) = logic.get_entity_mut(entity_id) {
+                        entity.set_name(name.to_string());
+                        format!("Name set to {}", name)
+                    } else {
+                        "Entity not found".to_string()
+                    }
+                } else {
+                    "Missing name".to_string()
+                }
+            }
+
+            _ => "Unknown command".to_string(),
+        };
+
+        writeln!(self.buf_writer, "{}", response).unwrap();
+        self.buf_writer.flush().unwrap();
     }
+
+
     fn handle_disconnection(&mut self) {
-        add_message(
-            &self.messages,
-            format!("[INFO] Client disconnected: {:?}", Result::unwrap(self.socket.peer_addr())),
-            MessageType::Info,
-        );
-        self.socket.shutdown(Shutdown::Both).expect("Failed to shutdown socket");
+        let peer_addr = self.socket.peer_addr().unwrap();
+
+        if let Some(entity_id) = self.client_entity_map.lock().unwrap().remove(&peer_addr) {
+            let mut logic = self.game_logic.lock().unwrap();
+            logic.remove_entity_by_id(entity_id);
+            add_message(
+                &self.messages,
+                format!("[INFO] Client {} disconnected, entity {} removed.", peer_addr, entity_id),
+                MessageType::Info,
+            );
+        } else {
+            add_message(
+                &self.messages,
+                format!("[INFO] Client {} disconnected, but had no associated entity.", peer_addr),
+                MessageType::Info,
+            );
+        }
+
+        let _ = self.socket.shutdown(Shutdown::Both);
     }
 
     /// Adds a message to the response string.

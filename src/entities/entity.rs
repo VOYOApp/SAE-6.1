@@ -6,6 +6,7 @@ use crate::physics::physics::PhysicsEngine;
 
 /// Represents an entity in the physics simulation.
 pub struct Entity {
+    pub id: u32,
     pub name: String,
     pub score: i32,
     pub handle: RigidBodyHandle,
@@ -35,7 +36,7 @@ impl Entity {
     /// ```
     /// let entity = Entity::new("Player1".to_string(), &mut physics_engine, false);
     /// ```
-    pub fn new(name: String, physics_engine: &mut PhysicsEngine, is_ai: bool) -> Self {
+    pub fn new(id: u32, name: String, physics_engine: &mut PhysicsEngine, is_ai: bool) -> Self {
         let mut rng = rand::thread_rng();
         let random_x = rng.gen_range(10.0..1190.0);
         let random_y = rng.gen_range(10.0..990.0);
@@ -54,6 +55,7 @@ impl Entity {
         physics_engine.colliders.insert_with_parent(collider, handle, &mut physics_engine.bodies);
 
         Self {
+            id,
             name,
             score: 0,
             handle,
@@ -67,5 +69,9 @@ impl Entity {
             target_y: random_y,
             color: egui::Color32::GREEN,
         }
+    }
+
+    pub fn set_name(&mut self, new_name: String) {
+        self.name = new_name;
     }
 }

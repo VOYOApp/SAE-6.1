@@ -9,6 +9,7 @@ use crate::obstacles::Obstacle;
 use crate::physics::physics::PhysicsEngine;
 
 /// Represents the game logic and manages the state of the game.
+#[derive(Default)]
 pub struct GameLogic {
     /// The physics engine managing the physical simulation.
     pub physics_engine: PhysicsEngine,
@@ -46,9 +47,42 @@ impl GameLogic {
     ///
     /// # Parameters
     /// - `name`: The name of the entity.
-    pub fn add_entity(&mut self, name: String) {
-        let entity = Entity::new(name, &mut self.physics_engine, false);
+    pub fn add_entity(&mut self, name: String) -> u32 {
+        let entity_id = self.next_entity_id();
+        let entity = Entity::new(entity_id, name, &mut self.physics_engine, false);
         self.entities.push(entity);
+
+        println!("Current entities in game:");
+        for entity in &self.entities {
+            println!("Entity ID: {}, Name: {}", entity.id, entity.name);
+        }
+
+        entity_id
+    }
+
+    /// Removes an entity from the game by its ID.
+    pub fn remove_entity_by_id(&mut self, entity_id: u32) {
+        if let Some(index) = self.entities.iter().position(|e| e.id == entity_id) {
+            let entity = self.entities.remove(index);
+            self.physics_engine.bodies.remove(
+                entity.handle,
+                &mut self.physics_engine.islands,
+                &mut self.physics_engine.colliders,
+                &mut self.physics_engine.impulse_joints,
+                &mut self.physics_engine.multibody_joints,
+                true,
+            );
+            println!("Entity with ID {} has been removed from the game.", entity_id);
+        }
+    }
+
+    fn next_entity_id(&self) -> u32 {
+        // Par exemple un simple compteur ou max + 1
+        self.entities.iter().map(|e| e.id).max().unwrap_or(0) + 1
+    }
+
+    pub fn get_entity_mut(&mut self, id: u32) -> Option<&mut Entity> {
+        self.entities.iter_mut().find(|e| e.id == id)
     }
 
     /// Makes an entity shoot a bullet.
@@ -255,9 +289,11 @@ impl GameLogic {
     ///
     /// # Parameters
     /// - `name`: The name of the AI entity.
-    pub fn add_ai(&mut self, name: String) {
-        let entity = Entity::new(name, &mut self.physics_engine, true);
+    pub fn add_ai(&mut self, name: String) -> u32 {
+        let id = self.next_entity_id();
+        let entity = Entity::new(id, name, &mut self.physics_engine, true);
         self.entities.push(entity);
+        id
     }
 
     /// Updates AI entities in the game.

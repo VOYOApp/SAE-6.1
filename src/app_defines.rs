@@ -23,7 +23,7 @@ impl AppDefines {
     /// The penalty time for infractions in ticks.
     pub const PENALTY_TIME: i64 = 1000;
     /// The delay before a connection times out in seconds.
-    pub const CONNECTION_TIMEOUT_DELAY: i32 = 10;
+    pub const CONNECTION_TIMEOUT_DELAY: i32 = 200;
     /// The duration messages are displayed in ticks.
     pub const MESSAGE_DURATION: i32 = 1000;
     /// The maximum length of a message in characters.

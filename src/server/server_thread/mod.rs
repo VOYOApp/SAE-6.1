@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+use std::net::{SocketAddr, TcpListener};
 use std::sync::{Arc, Mutex};
-use std::net::TcpListener;
 use std::thread;
 use std::time::Duration;
-use egui::Key::A;
-use crate::app_defines::AppDefines;
 
+use crate::app_defines::AppDefines;
+use crate::entities::entity::Entity;
+use crate::game_logic::GameLogic;
 use crate::server::client_handler::ClientHandler;
 use crate::types::{add_message, MessageType, StyledMessage};
 
@@ -66,6 +68,10 @@ pub(crate) struct ServerThread {
     pub(crate) messages: Arc<Mutex<Vec<StyledMessage>>>,
     /// Thread-safe, shared server settings.
     pub(crate) settings: Arc<Mutex<ServerSettings>>,
+    /// Game logic shared with the simulation
+    pub(crate) game_logic: Arc<Mutex<GameLogic>>,
+    /// Map client -> entity
+    pub(crate) client_entity_map: Arc<Mutex<HashMap<SocketAddr, u32>>>,
 }
 
 impl ServerThread {
@@ -88,6 +94,8 @@ impl ServerThread {
             port,
             messages,
             settings,
+            game_logic: Arc::new(Mutex::new(GameLogic::new())),
+            client_entity_map: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -109,16 +117,35 @@ impl ServerThread {
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
+                    let peer_addr = stream.peer_addr().unwrap();
+
                     add_message(
                         &self.messages,
-                        format!("[INFO] New client connected: {}", stream.peer_addr().unwrap()),
+                        format!("[INFO] New client connected: {}", peer_addr),
                         MessageType::Info,
                     );
+
+                    // Création de l'entité pour le client
+                    let entity_id = {
+                        let mut logic = self.game_logic.lock().unwrap();
+                        logic.add_entity("Player".to_string())
+                    };
+
+                    // Sauvegarde de l'association client -> entity
+                    self.client_entity_map
+                        .lock()
+                        .unwrap()
+                        .insert(peer_addr, entity_id);
+
                     let messages = Arc::clone(&self.messages);
                     let settings = Arc::clone(&self.settings);
+                    let game_logic = Arc::clone(&self.game_logic);
+                    let client_map = Arc::clone(&self.client_entity_map);
+
                     stream.set_read_timeout(Some(Duration::from_millis(100))).unwrap(); // Set timeout
+
                     thread::spawn(move || {
-                        ClientHandler::new(stream, messages, settings).run();
+                        ClientHandler::new(stream, messages, settings, game_logic, client_map).run();
                     });
                 }
                 Err(e) => {

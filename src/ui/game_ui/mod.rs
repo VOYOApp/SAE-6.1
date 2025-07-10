@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use eframe::egui;
 use egui::{Align2, Context, TopBottomPanel};
 use egui_extras::*;
@@ -7,19 +8,27 @@ use crate::game_logic::GameLogic;
 
 /// Represents the user interface for the game.
 pub struct GameUI {
-    game_logic: GameLogic,
+    game_logic: Arc<Mutex<GameLogic>>,
     line_thickness: f32,
     show_names: bool,
     show_background: bool,
 }
 
 impl GameUI {
-    /// Draws the obstacles on the plot.
-    ///
-    /// # Parameters
-    /// - `plot_ui`: The `PlotUi` instance where obstacles will be drawn.
+    pub fn new(game_logic: Arc<Mutex<GameLogic>>) -> Self {
+        Self {
+            game_logic,
+            line_thickness: 4.0,
+            show_names: true,
+            show_background: true,
+        }
+    }
+
     fn draw_obstacles(&self, plot_ui: &mut PlotUi) {
-        for obstacle in &self.game_logic.obstacles {
+        // On verrouille game_logic ici
+        let game_logic = self.game_logic.lock().unwrap();
+
+        for obstacle in &game_logic.obstacles {
             let position = obstacle.position;
             let line_thickness = self.line_thickness / 2.0;
 
@@ -39,13 +48,11 @@ impl GameUI {
         }
     }
 
-    /// Displays the entities on the plot.
-    ///
-    /// # Parameters
-    /// - `plot_ui`: The `PlotUi` instance where entities will be displayed.
     fn display_entities(&self, plot_ui: &mut PlotUi) {
-        for entity in &self.game_logic.entities {
-            let body = &self.game_logic.physics_engine.bodies[entity.handle];
+        let game_logic = self.game_logic.lock().unwrap();
+
+        for entity in &game_logic.entities {
+            let body = &game_logic.physics_engine.bodies[entity.handle];
             let pos = [body.translation().x as f64, body.translation().y as f64];
             let angle = body.rotation().angle();
 
@@ -71,7 +78,7 @@ impl GameUI {
             );
 
             if self.show_names {
-                let pos_with_offset = [pos[0], pos[1] + 20.0]; // Add 20 to the y-coordinate
+                let pos_with_offset = [pos[0], pos[1] + 20.0];
                 plot_ui.text(
                     Text::new(PlotPoint::from(pos_with_offset), &entity.name)
                         .color(egui::Color32::WHITE)
@@ -81,10 +88,6 @@ impl GameUI {
         }
     }
 
-    /// Displays the menu bar at the top of the UI.
-    ///
-    /// # Parameters
-    /// - `ctx`: The `Context` instance for rendering the menu.
     fn show_menu(&mut self, ctx: &Context) {
         TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -101,20 +104,30 @@ impl GameUI {
                         self.line_thickness -= 1.0;
                     }
                 }
+
+                // Ici on doit aussi verrouiller avant d’appeler les méthodes
                 if ui.button("Reset Simulation").clicked() {
-                    self.game_logic.reset_simulation();
+                    if let Ok(mut game_logic) = self.game_logic.lock() {
+                        game_logic.reset_simulation();
+                    }
                 }
                 if ui.button("Generate Map").clicked() {
-                    self.game_logic.generate_map();
+                    if let Ok(mut game_logic) = self.game_logic.lock() {
+                        game_logic.generate_map();
+                    }
                 }
                 if ui.button("Show Background").clicked() {
                     self.show_background = !self.show_background;
                 }
                 if ui.button("Add Entity").clicked() {
-                    self.game_logic.add_entity("Player".to_string());
+                    if let Ok(mut game_logic) = self.game_logic.lock() {
+                        game_logic.add_entity("Player".to_string());
+                    }
                 }
-                if ui.button("Add AI").clicked() { // New AI button
-                    self.game_logic.add_ai("AI Bot".to_string());
+                if ui.button("Add AI").clicked() {
+                    if let Ok(mut game_logic) = self.game_logic.lock() {
+                        game_logic.add_ai("AI Bot".to_string());
+                    }
                 }
             });
         });
@@ -122,16 +135,12 @@ impl GameUI {
 }
 
 impl Default for GameUI {
-    /// Creates a new default `GameUI` instance.
-    ///
-    /// # Returns
-    /// A new instance of `GameUI` with default settings.
     fn default() -> Self {
         let mut game_logic = GameLogic::new();
         game_logic.generate_map();
 
         Self {
-            game_logic,
+            game_logic: Arc::new(Mutex::new(game_logic)),
             line_thickness: 4.0,
             show_names: true,
             show_background: true,
@@ -140,22 +149,19 @@ impl Default for GameUI {
 }
 
 impl eframe::App for GameUI {
-    /// Updates the game UI.
-    ///
-    /// # Parameters
-    /// - `ctx`: The `Context` instance for rendering.
-    /// - `_frame`: The `Frame` instance for the application window.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.show_menu(ctx);
 
-        // Update AI movement
-        self.game_logic.update_ai();
-
-        // Update the physics
-        self.game_logic.step();
+        // Verrouille et appelle les fonctions update
+        if let Ok(mut game_logic) = self.game_logic.lock() {
+            game_logic.update_ai();
+            game_logic.step();
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::SidePanel::left("entity_list").show_inside(ui, |ui| {
+                let game_logic = self.game_logic.lock().unwrap();
+
                 TableBuilder::new(ui)
                     .column(Column::exact(200.0).resizable(false))
                     .column(Column::exact(100.0).resizable(false))
@@ -170,7 +176,7 @@ impl eframe::App for GameUI {
                     .body(|mut body| {
                         let padding = 10.0;
 
-                        for (index, entity) in self.game_logic.entities.iter().enumerate() {
+                        for (index, entity) in game_logic.entities.iter().enumerate() {
                             body.row(30.0, |mut row| {
                                 let bg_color = if index % 2 == 0 {
                                     egui::Color32::from_gray(20)
@@ -226,11 +232,13 @@ impl eframe::App for GameUI {
                             }
                         }
 
+                        let game_logic = self.game_logic.lock().unwrap();
+
                         let plot_points = Points::new(
-                            self.game_logic.bullets
+                            game_logic.bullets
                                 .iter()
                                 .map(|bullet| {
-                                    let pos = self.game_logic.physics_engine.bodies[bullet.handle].translation();
+                                    let pos = game_logic.physics_engine.bodies[bullet.handle].translation();
                                     [pos.x as f64, pos.y as f64]
                                 })
                                 .collect::<Vec<_>>(),
@@ -239,8 +247,9 @@ impl eframe::App for GameUI {
                             .name("Bullets");
                         plot_ui.points(plot_points);
 
-                        self.display_entities(plot_ui);
+                        drop(game_logic); // On drop explicitement le lock avant d’appeler ces méthodes
 
+                        self.display_entities(plot_ui);
                         self.draw_obstacles(plot_ui);
 
                         let world_boundary = Line::new(PlotPoints::new(vec![
