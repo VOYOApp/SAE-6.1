@@ -64,4 +64,11 @@ impl AppDefines {
     pub const COMMAND_SEP: &'static str = "#";
     /// Separator for arguments.
     pub const ARGUMENT_SEP: &'static str = "=";
+
+
+    /// Actionneurs moteurs et armes
+    pub const ACTUATOR_MOTOR_LEFT: &'static str = "MotL";
+    pub const ACTUATOR_MOTOR_RIGHT: &'static str = "MotR";
+    pub const ACTUATOR_GUN_TRIGGER: &'static str = "GunTrig";
+    pub const ACTUATOR_GUN_TRAVERSE: &'static str = "GunTrav";
 }

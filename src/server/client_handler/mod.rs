@@ -192,6 +192,12 @@ impl ClientHandler {
         }
     }*/
 
+    /// Processes an individual message from the client.
+    ///
+    /// # Arguments
+    ///
+    /// * `received` - The received message as a string.
+    ///
     fn process_message(&mut self, received: &str) {
         let peer_addr = self.socket.peer_addr().unwrap();
         let entity_id = {
@@ -199,12 +205,13 @@ impl ClientHandler {
             *map.get(&peer_addr).unwrap_or(&0)
         };
 
-        let mut message_values = received.split(AppDefines::ARGUMENT_SEP).collect::<Vec<&str>>();
-        let code_message = message_values[0];
+        let mut parts = received.trim().split(AppDefines::ARGUMENT_SEP);
+        let code = parts.next().unwrap_or("").trim();
+        let value = parts.next();
 
-        let response = match code_message {
+        let response = match code {
             AppDefines::SET_NAME => {
-                if let Some(name) = message_values.get(1) {
+                if let Some(name) = value {
                     let mut logic = self.game_logic.lock().unwrap();
                     if let Some(entity) = logic.get_entity_mut(entity_id) {
                         entity.set_name(name.to_string());
@@ -217,11 +224,44 @@ impl ClientHandler {
                 }
             }
 
-            _ => "Unknown command".to_string(),
+            AppDefines::ACTUATOR_MOTOR_LEFT |
+            AppDefines::ACTUATOR_MOTOR_RIGHT |
+            AppDefines::ACTUATOR_GUN_TRIGGER |
+            AppDefines::ACTUATOR_GUN_TRAVERSE => {
+                if let Some(val_str) = value {
+                    match val_str.trim().parse::<f32>() {
+                        Ok(val) => {
+                            let mut logic = self.game_logic.lock().unwrap();
+                            if let Some(ent) = logic.get_entity_mut(entity_id) {
+                                match code {
+                                    AppDefines::ACTUATOR_MOTOR_LEFT => ent.motor_left = val,
+                                    AppDefines::ACTUATOR_MOTOR_RIGHT => ent.motor_right = val,
+                                    AppDefines::ACTUATOR_GUN_TRIGGER => ent.gun_trigger = val,
+                                    AppDefines::ACTUATOR_GUN_TRAVERSE => ent.gun_traverse = val,
+                                    _ => {}
+                                }
+                                format!("{} set to {}", code, val)
+                            } else {
+                                "Entity not found".to_string()
+                            }
+                        }
+                        Err(_) => "Invalid float value".to_string(),
+                    }
+                } else {
+                    "Missing value".to_string()
+                }
+            }
+
+            AppDefines::QUIT => {
+                self.handle_disconnection();
+                return; // on ne continue pas après EXIT
+            }
+
+            _ => format!("Unknown command: {}", code),
         };
 
-        writeln!(self.buf_writer, "{}", response).unwrap();
-        self.buf_writer.flush().unwrap();
+        let _ = writeln!(self.buf_writer, "{}", response);
+        let _ = self.buf_writer.flush();
     }
 
 

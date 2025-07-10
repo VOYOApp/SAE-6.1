@@ -85,6 +85,33 @@ impl GameLogic {
         self.entities.iter_mut().find(|e| e.id == id)
     }
 
+    fn apply_actuators(entities: &mut Vec<Entity>, physics_engine: &mut PhysicsEngine) {
+        for entity in entities.iter_mut() {
+            let Some(rb) = physics_engine.bodies.get_mut(entity.handle) else { continue };
+
+            let max_speed = 100.0;
+            let left_speed = (entity.motor_left - 0.5) * 2.0 * max_speed;
+            let right_speed = (entity.motor_right - 0.5) * 2.0 * max_speed;
+
+            // Calcul différentiel rudimentaire
+            let forward = (left_speed + right_speed) / 2.0;
+            let rotation = (right_speed - left_speed) / 40.0;
+
+            let angle = rb.rotation().angle();
+            let vx = forward * angle.cos();
+            let vy = forward * angle.sin();
+
+            rb.set_linvel(vector![vx, vy], true);
+            rb.set_angvel(rotation, true);
+
+            if entity.gun_trigger > 0.5 {
+                // gestion du tir ici si besoin
+            }
+
+            entity.gun_orientation = entity.gun_traverse as f64;
+        }
+    }
+
     /// Makes an entity shoot a bullet.
     ///
     /// # Parameters
@@ -112,7 +139,12 @@ impl GameLogic {
 
     /// Advances the simulation by one step.
     pub fn step(&mut self) {
-        self.physics_engine.step();
+        let physics = &mut self.physics_engine;
+        let entities = &mut self.entities;
+
+        GameLogic::apply_actuators(entities, physics);
+
+        physics.step();
         self.handle_collisions();
         self.remove_out_of_bounds_bullets();
         self.remove_expired_bullets();

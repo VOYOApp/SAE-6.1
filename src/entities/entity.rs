@@ -19,6 +19,10 @@ pub struct Entity {
     pub target_x: f32,
     pub target_y: f32,
     pub color: egui::Color32,
+    pub motor_left: f32,      // 0.0 à 1.0
+    pub motor_right: f32,
+    pub gun_trigger: f32,
+    pub gun_traverse: f32,
 }
 
 impl Entity {
@@ -68,6 +72,10 @@ impl Entity {
             target_x: random_x,
             target_y: random_y,
             color: egui::Color32::GREEN,
+            motor_left: 0.5,
+            motor_right: 0.5,
+            gun_trigger: 0.0,
+            gun_traverse: 0.0,
         }
     }
 

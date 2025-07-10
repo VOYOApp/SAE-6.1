@@ -28,7 +28,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     thread::spawn(move || {
         let serv = ServerThread {
-            address: "127.0.0.1".to_string(),
+       /*     address: "127.0.0.1".to_string(),*/
+            address: "192.168.1.182".to_string(),
             port: 6969,
             messages: server_messages,
             settings: server_settings,
