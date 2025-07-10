@@ -92,6 +92,13 @@ impl ClientHandler {
         let now = SystemTime::now();
         let current_time = now.duration_since(UNIX_EPOCH).unwrap().as_secs();
         if current_time - self.previous_time > AppDefines::CONNECTION_TIMEOUT_DELAY as u64 {
+            let peer_addr = self.socket.peer_addr().unwrap();
+
+            if let Some(entity_id) = self.client_entity_map.lock().unwrap().remove(&peer_addr) {
+                let mut logic = self.game_logic.lock().unwrap();
+                logic.remove_entity_by_id(entity_id);
+            }
+
             add_message(
                 &self.messages,
                 format!("[WARNING] Connection timeout: {}", self.socket.peer_addr().unwrap()),
