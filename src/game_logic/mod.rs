@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use rand::Rng;
 use rapier2d::prelude::*;
-
+use crate::app_defines::AppDefines;
 use crate::bullet::bullet::Bullet;
 use crate::entities::entity::Entity;
 use crate::obstacles::Obstacle;
@@ -85,7 +85,11 @@ impl GameLogic {
         self.entities.iter_mut().find(|e| e.id == id)
     }
 
-    fn apply_actuators(entities: &mut Vec<Entity>, physics_engine: &mut PhysicsEngine) {
+    fn apply_actuators(
+        entities: &mut Vec<Entity>,
+        physics_engine: &mut PhysicsEngine,
+        bullets: &mut Vec<Bullet>,
+    ) {
         for entity in entities.iter_mut() {
             let Some(rb) = physics_engine.bodies.get_mut(entity.handle) else { continue };
 
@@ -105,7 +109,16 @@ impl GameLogic {
             rb.set_angvel(rotation, true);
 
             if entity.gun_trigger > 0.5 {
-                // gestion du tir ici si besoin
+                // Appelle la fonction shoot_ball pour gérer le tir
+                let before_bullets_len = bullets.len();
+                // shoot_ball va gérer le cooldown et la création de la balle
+                GameLogic::shoot_ball(entity, physics_engine, bullets);
+                // Optionnel: mettre à jour last_shot ici si shoot_ball ne le fait pas
+
+                // Si shoot_ball a ajouté une balle, met à jour last_shot
+                if bullets.len() > before_bullets_len {
+                    entity.last_shot = Instant::now();
+                }
             }
 
             entity.gun_orientation = entity.gun_traverse as f64;
@@ -116,7 +129,7 @@ impl GameLogic {
     ///
     /// # Parameters
     /// - `shooter_index`: The index of the entity that is shooting.
-    pub fn shoot_ball(&mut self, shooter_index: usize) {
+    /*pub fn shoot_ball(&mut self, shooter_index: usize) {
         if shooter_index >= self.entities.len() {
             return;
         }
@@ -135,14 +148,39 @@ impl GameLogic {
 
         self.bullets.push(bullet);
         self.entities[shooter_index].last_shot = Instant::now();
+    }*/
+
+    /// Makes an entity shoot a bullet.
+    ///
+    /// # Parameters
+    /// - `shooter_index`: The index of the entity that is shooting.
+    pub fn shoot_ball(
+        shooter: &Entity,
+        physics_engine: &mut PhysicsEngine,
+        bullets: &mut Vec<Bullet>
+    ) {
+        if shooter.last_shot.elapsed().as_millis() < AppDefines::BOT_RATE_OF_FIRE as u128 {
+            return;
+        }
+
+        let bullet = Bullet::new(
+            shooter.handle,
+            physics_engine,
+            500.0,  // speed
+            5.0,    // radius
+        );
+
+        bullets.push(bullet);
     }
+
 
     /// Advances the simulation by one step.
     pub fn step(&mut self) {
         let physics = &mut self.physics_engine;
         let entities = &mut self.entities;
+        let bullets = &mut self.bullets;
 
-        GameLogic::apply_actuators(entities, physics);
+        GameLogic::apply_actuators(entities, physics, bullets);
 
         physics.step();
         self.handle_collisions();
@@ -153,7 +191,7 @@ impl GameLogic {
     /// Handles collisions between entities and bullets.
     fn handle_collisions(&mut self) {
         let mut bullet_indices_to_remove = Vec::new();
-
+        let mut entity_ids_to_remove = Vec::new();
         for event in self.physics_engine.collision_events.drain(..) {
             if let CollisionEvent::Started(collider1, collider2, _) = event {
                 let body1 = self.physics_engine.colliders[collider1].parent();
@@ -164,25 +202,53 @@ impl GameLogic {
                         if bullet.handle == body1 || bullet.handle == body2 {
                             bullet_indices_to_remove.push(bullet_index);
 
-                            // Update scores if the bullet hit an entity
                             if let Some(entity_index) = self.entities.iter().position(|e| e.handle == body1 || e.handle == body2) {
+                                // Éviter que le tireur s'inflige des dégâts à lui-même
                                 if bullet.shooter != self.entities[entity_index].handle {
-                                    let shooter_index = self.entities.iter().position(|e| e.handle == bullet.shooter).unwrap();
-                                    self.entities[shooter_index].score += 1;
+                                    if let Some(shooter_index) = self.entities.iter().position(|e| e.handle == bullet.shooter) {
+                                        // Obtenir 2 références mutables distinctes aux entités pour éviter le conflit d'emprunts
+                                        let (first, second) = if entity_index < shooter_index {
+                                            self.entities.split_at_mut(shooter_index)
+                                        } else {
+                                            self.entities.split_at_mut(entity_index)
+                                        };
+
+                                        if entity_index < shooter_index {
+                                            let entity = &mut first[entity_index];
+                                            let shooter = &mut second[0];
+                                            entity.health -= 1;
+                                            shooter.score += 1;
+                                            if entity.health <= 0 {
+                                                entity_ids_to_remove.push(entity.id);
+                                            }
+                                        } else {
+                                            let shooter = &mut first[shooter_index];
+                                            let entity = &mut second[0];
+                                            entity.health -= 1;
+                                            shooter.score += 1;
+                                            if entity.health <= 0 {
+                                                entity_ids_to_remove.push(entity.id);
+                                            }
+                                        }
+                                    }
                                 }
                             }
-
-                            break;
+                            break; // On a trouvé la balle, pas besoin de continuer la boucle
                         }
                     }
                 }
             }
         }
 
-        // Remove bullets based on collected indices
+        // Supprimer les balles (dans l'ordre décroissant pour éviter les décalages d'indices)
         bullet_indices_to_remove.sort_unstable_by(|a, b| b.cmp(a));
         for &index in &bullet_indices_to_remove {
             self.remove_bullet(index);
+        }
+
+        // Supprimer les entités mortes par ID
+        for id in entity_ids_to_remove {
+            self.remove_entity_by_id(id);
         }
     }
 

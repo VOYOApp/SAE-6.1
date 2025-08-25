@@ -23,6 +23,7 @@ pub struct Entity {
     pub motor_right: f32,
     pub gun_trigger: f32,
     pub gun_traverse: f32,
+    pub health: i32,
 }
 
 impl Entity {
@@ -41,11 +42,11 @@ impl Entity {
     /// let entity = Entity::new("Player1".to_string(), &mut physics_engine, false);
     /// ```
     pub fn new(id: u32, name: String, physics_engine: &mut PhysicsEngine, is_ai: bool) -> Self {
-        let mut rng = rand::thread_rng();
-        let random_x = rng.gen_range(10.0..1190.0);
-        let random_y = rng.gen_range(10.0..990.0);
-        let vx = rng.gen_range(-100.0..100.0);
-        let vy = rng.gen_range(-100.0..100.0);
+        let mut rng = rand::rng();
+        let random_x = rng.random_range(10.0..1190.0);
+        let random_y = rng.random_range(10.0..990.0);
+        let vx = rng.random_range(-100.0..100.0);
+        let vy = rng.random_range(-100.0..100.0);
 
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(vector![random_x, random_y])
@@ -53,6 +54,7 @@ impl Entity {
             .build();
         let collider = ColliderBuilder::cuboid(10.0, 10.0)
             .restitution(0.0)
+            .active_events(ActiveEvents::COLLISION_EVENTS)
             .build();
 
         let handle = physics_engine.bodies.insert(rigid_body);
@@ -76,6 +78,7 @@ impl Entity {
             motor_right: 0.5,
             gun_trigger: 0.0,
             gun_traverse: 0.0,
+            health: 1,
         }
     }
 

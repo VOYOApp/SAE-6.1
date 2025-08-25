@@ -1,7 +1,8 @@
 use std::time::{Duration, Instant};
-
+use rapier2d::crossbeam::channel::{unbounded, Receiver, Sender};
 // physics/mod.rs
 use rapier2d::prelude::*;
+use rapier2d::prelude::{ChannelEventCollector, CollisionEvent};
 
 use crate::app_defines::AppDefines;
 
@@ -22,6 +23,8 @@ pub struct PhysicsEngine {
     pub start_time: Instant,
     pub loop_duration: Duration,
     pub collision_events: Vec<CollisionEvent>,
+    pub event_receiver: Receiver<CollisionEvent>,
+    pub event_collector: ChannelEventCollector,
 }
 
 impl Default for PhysicsEngine {
@@ -30,6 +33,9 @@ impl Default for PhysicsEngine {
     /// # Returns
     /// A new instance of `PhysicsEngine` with default settings.
     fn default() -> Self {
+        let (collision_sender, collision_receiver): (Sender<CollisionEvent>, Receiver<CollisionEvent>) = unbounded();
+        let (contact_sender, _contact_receiver): (Sender<ContactForceEvent>, Receiver<ContactForceEvent>) = unbounded();
+
         Self {
             physics_pipeline: PhysicsPipeline::new(),
             gravity: vector![0.0, 0.0],
@@ -46,6 +52,8 @@ impl Default for PhysicsEngine {
             start_time: Instant::now(),
             loop_duration: Duration::new(5, 0),
             collision_events: Vec::new(),
+            event_collector: ChannelEventCollector::new(collision_sender, contact_sender),
+            event_receiver: collision_receiver,
         }
     }
 }
@@ -55,10 +63,7 @@ impl PhysicsEngine {
     ///
     /// Clears previous collision events and updates the physics world.
     pub fn step(&mut self) {
-        self.collision_events.clear(); // Clear previous collision events
-        let mut collision_event_handler = |event: &CollisionEvent| {
-            self.collision_events.push(event.clone());
-        };
+        self.collision_events.clear();
 
         self.physics_pipeline.step(
             &self.gravity,
@@ -73,8 +78,13 @@ impl PhysicsEngine {
             &mut self.ccd_solver,
             Some(&mut self.query_pipeline),
             &(),
-            &(),
+            &self.event_collector,
         );
+
+        // Récupère tous les événements générés
+        while let Ok(event) = self.event_receiver.try_recv() {
+            self.collision_events.push(event);
+        }
     }
 
     /// Sets up the boundary colliders for the simulation area.

@@ -19,7 +19,7 @@ impl AppDefines {
     // BOT Gameplay
     pub const GAME_MODES: [&'static str; 1] = ["FreeForAll"];
     /// The rate of fire for bots in ticks.
-    pub const BOT_RATE_OF_FIRE: i32 = 100;
+    pub const BOT_RATE_OF_FIRE: i32 = 750;
     /// The penalty time for infractions in ticks.
     pub const PENALTY_TIME: i64 = 1000;
     /// The delay before a connection times out in seconds.

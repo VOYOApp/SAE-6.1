@@ -31,12 +31,17 @@ impl Bullet {
         let angle = shooter_body.rotation().angle();
         let direction = vector![angle.cos(), angle.sin()];
 
+        let offset_distance = 20.0;
+        let start_pos = pos + direction * offset_distance;
+
         let rigid_body = RigidBodyBuilder::dynamic()
-            .translation(pos)
+            .translation(start_pos)
             .linvel(direction * speed)
             .build();
+
         let collider = ColliderBuilder::ball(radius)
             .restitution(0.0)
+            .active_events(ActiveEvents::COLLISION_EVENTS)
             .build();
 
         let handle = physics_engine.bodies.insert(rigid_body);
